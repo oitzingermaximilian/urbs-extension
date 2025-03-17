@@ -1,4 +1,3 @@
-
 try:
     isinstance("", basestring)
 

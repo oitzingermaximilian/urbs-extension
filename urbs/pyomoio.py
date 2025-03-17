@@ -3,7 +3,7 @@ import pyomo.core as pyomo
 
 
 def get_entity(instance, name):
-    """ Retrieve values (or duals) for an entity in a model instance.
+    """Retrieve values (or duals) for an entity in a model instance.
 
     Args:
         instance: a Pyomo ConcreteModel instance
@@ -14,7 +14,7 @@ def get_entity(instance, name):
         entity name. For constraints, it retrieves the dual values
     """
     # magic: short-circuit if problem contains a result cache
-    if hasattr(instance, '_result') and name in instance._result:
+    if hasattr(instance, "_result") and name in instance._result:
         return instance._result[name].copy(deep=True)
 
     # retrieve entity, its type and its onset names
@@ -38,31 +38,25 @@ def get_entity(instance, name):
         # unconstrained supersets
         if not labels:
             labels = [name]
-            name = name + '_'
+            name = name + "_"
 
     elif isinstance(entity, pyomo.Param):
         if entity.dim() > 1:
-            results = pd.DataFrame(
-                [v[0] + (v[1],) for v in entity.items()])
+            results = pd.DataFrame([v[0] + (v[1],) for v in entity.items()])
         elif entity.dim() == 1:
-            results = pd.DataFrame(
-                [(v[0], v[1]) for v in entity.items()])
+            results = pd.DataFrame([(v[0], v[1]) for v in entity.items()])
         else:
-            results = pd.DataFrame(
-                [(v[0], v[1].value) for v in entity.items()])
-            labels = ['None']
+            results = pd.DataFrame([(v[0], v[1].value) for v in entity.items()])
+            labels = ["None"]
 
     elif isinstance(entity, pyomo.Expression):
         if entity.dim() > 1:
-            results = pd.DataFrame(
-                [v[0]+(v[1](),) for v in entity.items()])
+            results = pd.DataFrame([v[0] + (v[1](),) for v in entity.items()])
         elif entity.dim() == 1:
-            results = pd.DataFrame(
-                [(v[0], v[1]()) for v in entity.items()])
+            results = pd.DataFrame([(v[0], v[1]()) for v in entity.items()])
         else:
-            results = pd.DataFrame(
-                [(v[0], v[1]()) for v in entity.items()])
-            labels = ['None']
+            results = pd.DataFrame([(v[0], v[1]()) for v in entity.items()])
+            labels = ["None"]
 
     elif isinstance(entity, pyomo.Constraint):
         if entity.dim() > 1:
@@ -70,33 +64,35 @@ def get_entity(instance, name):
             # an existing dual variable
             # in that case add to results
             results = pd.DataFrame(
-                [key + (instance.dual[entity.at(key)],)
-                 for (id, key) in entity.id_index_map().items()
-                 if id in instance.dual._dict.keys()])
+                [
+                    key + (instance.dual[entity.at(key)],)
+                    for (id, key) in entity.id_index_map().items()
+                    if id in instance.dual._dict.keys()
+                ]
+            )
         elif entity.dim() == 1:
             results = pd.DataFrame(
-                [(v[0], instance.dual[v[1]]) for v in entity.items()])
+                [(v[0], instance.dual[v[1]]) for v in entity.items()]
+            )
         else:
             results = pd.DataFrame(
-                [(v[0], instance.dual[v[1]]) for v in entity.items()])
-            labels = ['None']
+                [(v[0], instance.dual[v[1]]) for v in entity.items()]
+            )
+            labels = ["None"]
 
     else:
         # create DataFrame
         if entity.dim() > 1:
             # concatenate index tuples with value if entity has
             # multidimensional indices v[0]
-            results = pd.DataFrame(
-                [v[0] + (v[1].value,) for v in entity.items()])
+            results = pd.DataFrame([v[0] + (v[1].value,) for v in entity.items()])
         elif entity.dim() == 1:
             # otherwise, create tuple from scalar index v[0]
-            results = pd.DataFrame(
-                [(v[0], v[1].value) for v in entity.items()])
+            results = pd.DataFrame([(v[0], v[1].value) for v in entity.items()])
         else:
             # assert(entity.dim() == 0)
-            results = pd.DataFrame(
-                [(v[0], v[1].value) for v in entity.items()])
-            labels = ['None']
+            results = pd.DataFrame([(v[0], v[1].value) for v in entity.items()])
+            labels = ["None"]
 
     # check for duplicate onset names and append one to several "_" to make
     # them unique, e.g. ['sit', 'sit', 'com'] becomes ['sit', 'sit_', 'com']
@@ -118,7 +114,7 @@ def get_entity(instance, name):
 
 
 def get_entities(instance, names):
-    """ Return one DataFrame with entities in columns and a common index.
+    """Return one DataFrame with entities in columns and a common index.
 
     Works only on entities that share a common domain (set or set_tuple), which
     is used as index of the returned DataFrame.
@@ -140,16 +136,16 @@ def get_entities(instance, names):
         else:
             index_names_before = df.index.names
 
-            df = df.join(other.reindex(df.index), how='outer')
+            df = df.join(other.reindex(df.index), how="outer")
 
             if index_names_before != df.index.names:
-                    df.index.names = index_names_before
+                df.index.names = index_names_before
 
     return df
 
 
 def list_entities(instance, entity_type):
-    """ Return list of sets, params, variables, constraints or objectives
+    """Return list of sets, params, variables, constraints or objectives
 
     Args:
         instance: a Pyomo ConcreteModel object
@@ -170,17 +166,17 @@ def list_entities(instance, entity_type):
 
     # helper function to discern entities by type
     def filter_by_type(entity, entity_type):
-        if entity_type == 'set':
+        if entity_type == "set":
             return isinstance(entity, pyomo.Set)
-        elif entity_type == 'par':
+        elif entity_type == "par":
             return isinstance(entity, pyomo.Param)
-        elif entity_type == 'var':
+        elif entity_type == "var":
             return isinstance(entity, pyomo.Var)
-        elif entity_type == 'con':
+        elif entity_type == "con":
             return isinstance(entity, pyomo.Constraint)
-        elif entity_type == 'obj':
+        elif entity_type == "obj":
             return isinstance(entity, pyomo.Objective)
-        elif entity_type == 'exp':
+        elif entity_type == "exp":
             return isinstance(entity, pyomo.Expression)
         else:
             raise ValueError("Unknown entity_type '{}'".format(entity_type))
@@ -196,20 +192,20 @@ def list_entities(instance, entity_type):
     entities = sorted(
         (name, entity.doc, _get_onset_names(entity))
         for (name, entity) in iter_entities
-        if filter_by_type(entity, entity_type))
+        if filter_by_type(entity, entity_type)
+    )
 
     # if something was found, wrap tuples in DataFrame, otherwise return empty
     if entities:
-        entities = pd.DataFrame(entities,
-                                columns=['Name', 'Description', 'Domain'])
-        entities.set_index('Name', inplace=True)
+        entities = pd.DataFrame(entities, columns=["Name", "Description", "Domain"])
+        entities.set_index("Name", inplace=True)
     else:
         entities = pd.DataFrame()
     return entities
 
 
 def _get_onset_names(entity):
-    """ Return a list of domain set names for a given model entity
+    """Return a list of domain set names for a given model entity
 
     Args:
         entity: a member entity (i.e. a Set, Param, Var, Objective, Constraint)
@@ -242,33 +238,38 @@ def _get_onset_names(entity):
                     # intersection, ...) set exists. In that case, the
                     # attribute _setA holds the domain for the base set
                     try:
-                        domains = entity._setA.domain.subsets(expand_all_set_operators=True)
+                        domains = entity._setA.domain.subsets(
+                            expand_all_set_operators=True
+                        )
                     except AttributeError:
                         # if that fails, too, a constructed (union, difference,
                         # intersection, ...) set exists. In that case, the
                         # attribute _setB holds the domain for the base set
-                        domains = entity._setB.domain.subsets(expand_all_set_operators=True)
+                        domains = entity._setB.domain.subsets(
+                            expand_all_set_operators=True
+                        )
 
             for domain_set in domains:
                 labels.extend(_get_onset_names(domain_set))
 
         elif entity.dimen == 1:
             labels.append(entity.name)
-            #if entity.domain == pyomo.Any:
+            # if entity.domain == pyomo.Any:
             #    pass
-            #elif entity.domain:
-                # 1D subset; add entity name
+            # elif entity.domain:
+            # 1D subset; add entity name
             #    labels.append(entity.name)
-            #else:
-                # unrestricted set; add entity name
+            # else:
+            # unrestricted set; add entity name
             #    labels.append(entity.name)
         else:
             # no domain, so no labels needed
             pass
 
-    elif isinstance(entity, (pyomo.Param, pyomo.Var, pyomo.Expression,
-                    pyomo.Constraint, pyomo.Objective)):
-
+    elif isinstance(
+        entity,
+        (pyomo.Param, pyomo.Var, pyomo.Expression, pyomo.Constraint, pyomo.Objective),
+    ):
         if entity.dim() > 0 and entity._index_set:
             labels = _get_onset_names(entity._index_set)
         else:

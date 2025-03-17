@@ -2,7 +2,7 @@ import pandas as pd
 
 
 def identify_mode(data):
-    """ Identify the urbs mode that is needed for running the current Input
+    """Identify the urbs mode that is needed for running the current Input
 
     Args:
         data: input data dictionary
@@ -22,50 +22,51 @@ def identify_mode(data):
 
     # create modes
     mode = {
-        'int': False,                   # intertemporal
-        'tra': False,                   # transmission
-        'sto': False,                   # storage
-        'dsm': False,                   # demand site management
-        'bsp': False,                   # buy sell price
-        'tve': False,                   # time variable efficiency
-        'dpf': False,                   # dc power flow
-        'exp': {                        # expansion
-                'pro': True,
-                'tra': False,
-                'sto-c': False,
-                'sto-p': False}
-        }
+        "int": False,  # intertemporal
+        "tra": False,  # transmission
+        "sto": False,  # storage
+        "dsm": False,  # demand site management
+        "bsp": False,  # buy sell price
+        "tve": False,  # time variable efficiency
+        "dpf": False,  # dc power flow
+        "exp": {  # expansion
+            "pro": True,
+            "tra": False,
+            "sto-c": False,
+            "sto-p": False,
+        },
+    }
 
     # if number of support timeframes > 1
-    if len(data['global_prop'].index.levels[0]) > 1:
-        mode['int'] = True
-    if not data['transmission'].empty:
-        mode['tra'] = True
-        mode['exp']['tra'] = True
-    if not data['storage'].empty:
-        mode['sto'] = True
-        mode['exp']['sto-c'] = True
-        mode['exp']['sto-p'] = True
-    if not data['dsm'].empty:
-        mode['dsm'] = True
-    if not data['buy_sell_price'].empty:
-        mode['bsp'] = True
-    if not data['eff_factor'].empty:
-        mode['tve'] = True
-    if 'reactance' in data['transmission'].keys():
-        if any(data['transmission']['reactance'] > 0):
-            mode['dpf'] = True
+    if len(data["global_prop"].index.levels[0]) > 1:
+        mode["int"] = True
+    if not data["transmission"].empty:
+        mode["tra"] = True
+        mode["exp"]["tra"] = True
+    if not data["storage"].empty:
+        mode["sto"] = True
+        mode["exp"]["sto-c"] = True
+        mode["exp"]["sto-p"] = True
+    if not data["dsm"].empty:
+        mode["dsm"] = True
+    if not data["buy_sell_price"].empty:
+        mode["bsp"] = True
+    if not data["eff_factor"].empty:
+        mode["tve"] = True
+    if "reactance" in data["transmission"].keys():
+        if any(data["transmission"]["reactance"] > 0):
+            mode["dpf"] = True
 
     return mode
 
 
 def identify_expansion(const_unit_df, inst_cap_df):
-    """ Identify if the model will be with expansion. The criterion for which
-        no expansion is possible is "inst-cap == cap-up" for all
-        support timeframes
+    """Identify if the model will be with expansion. The criterion for which
+    no expansion is possible is "inst-cap == cap-up" for all
+    support timeframes
 
-        Here the the number of items in dataframe with constant units will be
-        compared to the the number of items to which 'inst-cap' is given
+    Here the the number of items in dataframe with constant units will be
+    compared to the the number of items to which 'inst-cap' is given
 
     """
     if const_unit_df.count() == inst_cap_df.count():

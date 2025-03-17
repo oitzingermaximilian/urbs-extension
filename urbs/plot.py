@@ -28,18 +28,23 @@ def sort_plot_elements(elements):
         return elements
 
     # calculate standard deviation
-    std = pd.DataFrame(np.zeros_like(elements.tail(1)),
-                       index=elements.index[-1:] + 1,
-                       columns=elements.columns)
+    std = pd.DataFrame(
+        np.zeros_like(elements.tail(1)),
+        index=elements.index[-1:] + 1,
+        columns=elements.columns,
+    )
     # calculate mean
-    mean = pd.DataFrame(np.zeros_like(elements.tail(1)),
-                        index=elements.index[-1:] + 1,
-                        columns=elements.columns)
+    mean = pd.DataFrame(
+        np.zeros_like(elements.tail(1)),
+        index=elements.index[-1:] + 1,
+        columns=elements.columns,
+    )
     # calculate quotient
     quotient = pd.DataFrame(
         np.zeros_like(elements.tail(1)),
         index=elements.index[-1:] + 1,
-        columns=elements.columns)
+        columns=elements.columns,
+    )
 
     for col in std.columns:
         std[col] = np.std(elements[col])
@@ -49,17 +54,27 @@ def sort_plot_elements(elements):
     quotient = quotient.fillna(0)
     # sort created/consumed ascencing with quotient i.e. base load first
     elements = elements.append(quotient)
-    new_columns = elements.columns[elements.ix[elements.last_valid_index()]
-                                           .argsort()]
+    new_columns = elements.columns[elements.ix[elements.last_valid_index()].argsort()]
     elements_sorted = elements[new_columns][:-1]
 
     return elements_sorted
 
 
-def plot(prob, stf, com, sit, dt, timesteps, timesteps_plot,
-         power_name='Power', energy_name='Energy',
-         power_unit='MW', energy_unit='MWh', time_unit='h',
-         figure_size=(16, 12)):
+def plot(
+    prob,
+    stf,
+    com,
+    sit,
+    dt,
+    timesteps,
+    timesteps_plot,
+    power_name="Power",
+    energy_name="Energy",
+    power_unit="MW",
+    energy_unit="MWh",
+    time_unit="h",
+    figure_size=(16, 12),
+):
     """Plot a stacked timeseries of commodity balance and storage.
 
     Creates a stackplot of the energy balance of a given commodity, together
@@ -88,7 +103,7 @@ def plot(prob, stf, com, sit, dt, timesteps, timesteps_plot,
 
     if timesteps is None:
         # default to all simulated timesteps
-        timesteps = sorted(get_entity(prob, 'tm').index)
+        timesteps = sorted(get_entity(prob, "tm").index)
 
     # convert timesteps to hour series for the plots
     hoursteps = timesteps * dt.iloc[0]
@@ -98,34 +113,34 @@ def plot(prob, stf, com, sit, dt, timesteps, timesteps_plot,
         # wrap single site in 1-element list for consistent behaviour
         sit = [sit]
 
-    (created, consumed, stored, imported, exported,
-     dsm, voltage_angle) = get_timeseries(prob, stf, com, sit, timesteps)
+    (created, consumed, stored, imported, exported, dsm, voltage_angle) = (
+        get_timeseries(prob, stf, com, sit, timesteps)
+    )
 
     # move retrieved/stored storage timeseries to created/consumed and
     # rename storage columns back to 'storage' for color mapping
-    created = created.join(stored['Retrieved'])
-    consumed = consumed.join(stored['Stored'])
-    created.rename(columns={'Retrieved': 'Storage'}, inplace=True)
-    consumed.rename(columns={'Stored': 'Storage'}, inplace=True)
+    created = created.join(stored["Retrieved"])
+    consumed = consumed.join(stored["Stored"])
+    created.rename(columns={"Retrieved": "Storage"}, inplace=True)
+    consumed.rename(columns={"Stored": "Storage"}, inplace=True)
 
     # only keep storage content in storage timeseries
-    stored = stored['Level']
+    stored = stored["Level"]
 
     # add imported/exported timeseries
     created = created.join(imported)
     consumed = consumed.join(exported)
 
     # move demand to its own plot
-    demand = consumed.pop('Demand')
+    demand = consumed.pop("Demand")
     # if DSM mode was activated
-    original = dsm.pop('Unshifted')
-    deltademand = dsm.pop('Delta')
+    original = dsm.pop("Unshifted")
+    deltademand = dsm.pop("Delta")
     try:
         # detect whether DSM could be used in this plot
         # if so, show DSM subplot (even if delta == 0 for the whole time)
-        df_dsm = get_input(prob, 'dsm')
-        plot_dsm = df_dsm.loc[(sit, com),
-                              ['cap-max-do', 'cap-max-up']].sum().sum() > 0
+        df_dsm = get_input(prob, "dsm")
+        plot_dsm = df_dsm.loc[(sit, com), ["cap-max-do", "cap-max-up"]].sum().sum() > 0
     except (KeyError, TypeError):
         plot_dsm = False
 
@@ -162,34 +177,38 @@ def plot(prob, stf, com, sit, dt, timesteps, timesteps_plot,
     # PLOT CONSUMED
 
     # stack plot for consumed commodities (divided by dt for power)
-    sp00 = ax0.stackplot(hoursteps[1:],
-                         -consumed.values.T / dt.iloc[0],
-                         labels=tuple(consumed.columns),
-                         linewidth=0.15)
+    sp00 = ax0.stackplot(
+        hoursteps[1:],
+        -consumed.values.T / dt.iloc[0],
+        labels=tuple(consumed.columns),
+        linewidth=0.15,
+    )
     # color
     for k, commodity in enumerate(consumed.columns):
         commodity_color = to_color(commodity)
 
         sp00[k].set_facecolor(commodity_color)
-        sp00[k].set_edgecolor((.5, .5, .5))
+        sp00[k].set_edgecolor((0.5, 0.5, 0.5))
 
     # PLOT CREATED
 
     # stack plot for created commodities (divided by dt for power)
-    sp0 = ax0.stackplot(hoursteps[1:],
-                        created.values.T / dt.iloc[0],
-                        labels=tuple(created.columns),
-                        linewidth=0.15)
+    sp0 = ax0.stackplot(
+        hoursteps[1:],
+        created.values.T / dt.iloc[0],
+        labels=tuple(created.columns),
+        linewidth=0.15,
+    )
 
     for k, commodity in enumerate(created.columns):
         commodity_color = to_color(commodity)
 
         sp0[k].set_facecolor(commodity_color)
-        sp0[k].set_edgecolor(to_color('Decoration'))
+        sp0[k].set_edgecolor(to_color("Decoration"))
 
     # label
-    ax0.set_title('Commodity balance of {} in {}'.format(com, ', '.join(sit)))
-    ax0.set_ylabel('{} ({})'.format(power_name, power_unit))
+    ax0.set_title("Commodity balance of {} in {}".format(com, ", ".join(sit)))
+    ax0.set_ylabel("{} ({})".format(power_name, power_unit))
 
     # legend
     handles, labels = ax0.get_legend_handles_labels()
@@ -212,24 +231,33 @@ def plot(prob, stf, com, sit, dt, timesteps, timesteps_plot,
             handles.pop(item_index)
             labels.pop(item_index)
 
-    lg = ax0.legend(handles=handles[::-1],
-                    labels=labels[::-1],
-                    frameon=False,
-                    loc='upper left',
-                    bbox_to_anchor=(1, 1))
-    plt.setp(lg.get_patches(), edgecolor=to_color('Decoration'),
-             linewidth=0.15)
+    lg = ax0.legend(
+        handles=handles[::-1],
+        labels=labels[::-1],
+        frameon=False,
+        loc="upper left",
+        bbox_to_anchor=(1, 1),
+    )
+    plt.setp(lg.get_patches(), edgecolor=to_color("Decoration"), linewidth=0.15)
     plt.setp(ax0.get_xticklabels(), visible=False)
 
     # PLOT DEMAND
     # line plot for demand (unshifted) commodities (divided by dt for power)
-    ax0.plot(hoursteps, original.values / dt.iloc[0], linewidth=0.8,
-             color=to_color('Unshifted'))
+    ax0.plot(
+        hoursteps,
+        original.values / dt.iloc[0],
+        linewidth=0.8,
+        color=to_color("Unshifted"),
+    )
 
     # line plot for demand (in case of DSM mode: shifted) commodities
     # (divided by dt for power)
-    ax0.plot(hoursteps[1:], demand.values / dt.iloc[0], linewidth=1.0,
-             color=to_color('Shifted'))
+    ax0.plot(
+        hoursteps[1:],
+        demand.values / dt.iloc[0],
+        linewidth=1.0,
+        color=to_color("Shifted"),
+    )
 
     # PLOT STORAGE
     ax1 = plt.subplot(gs[1], sharex=ax0)
@@ -246,12 +274,12 @@ def plot(prob, stf, com, sit, dt, timesteps, timesteps_plot,
         plt.setp(ax1.get_xticklabels(), visible=False)
     else:
         # else add label for time axis
-        ax1.set_xlabel('Time in year ({})'.format(time_unit))
+        ax1.set_xlabel("Time in year ({})".format(time_unit))
 
     # color & labels
-    sp1[0].set_facecolor(to_color('Storage'))
-    sp1[0].set_edgecolor(to_color('Decoration'))
-    ax1.set_ylabel('{} ({})'.format(energy_name, energy_unit))
+    sp1[0].set_facecolor(to_color("Storage"))
+    sp1[0].set_edgecolor(to_color("Decoration"))
+    ax1.set_ylabel("{} ({})".format(energy_name, energy_unit))
 
     # try:
     # ax1.set_ylim((0, 0.5 + csto.loc[sit, :, com]['C Total'].sum()))
@@ -264,31 +292,34 @@ def plot(prob, stf, com, sit, dt, timesteps, timesteps_plot,
         all_axes.append(ax2)
 
         # bar plot for DSM up-/downshift power (bar width depending on dt)
-        ax2.bar(hoursteps,
-                deltademand.values / dt[0], width=0.8 * dt[0],
-                color=to_color('Delta'),
-                edgecolor='none')
+        ax2.bar(
+            hoursteps,
+            deltademand.values / dt[0],
+            width=0.8 * dt[0],
+            color=to_color("Delta"),
+            edgecolor="none",
+        )
 
         # labels & y-limits
-        ax2.set_xlabel('Time in year ({})'.format(time_unit))
-        ax2.set_ylabel('{} ({})'.format(power_name, power_unit))
+        ax2.set_xlabel("Time in year ({})".format(time_unit))
+        ax2.set_ylabel("{} ({})".format(power_name, power_unit))
 
     # make xtick distance duration-dependent
-    if len(timesteps_plot) > 26 * 168 / dt.iloc[0]:     # time horizon > half a year
+    if len(timesteps_plot) > 26 * 168 / dt.iloc[0]:  # time horizon > half a year
         steps_between_ticks = int(168 * 4 / dt.iloc[0])  # tick every four weeks
         if steps_between_ticks == 0:
-            steps_between_ticks = 1                # tick every timestep
-    elif len(timesteps_plot) > 3 * 168 / dt.iloc[0]:    # time horizon > three weeks
-        steps_between_ticks = int(168 / dt.iloc[0])     # tick every week
-    elif len(timesteps_plot) > 2 * 24 / dt.iloc[0]:     # time horizon > two days
-        steps_between_ticks = int(24 / dt.iloc[0])      # tick every day
-    elif len(timesteps_plot) > 24 / dt.iloc[0]:         # time horizon > a day
-        steps_between_ticks = int(6 / dt.iloc[0])       # tick every six hours
-    else:                                          # time horizon <= a day
-        steps_between_ticks = int(3 / dt.iloc[0])       # tick every three hours
+            steps_between_ticks = 1  # tick every timestep
+    elif len(timesteps_plot) > 3 * 168 / dt.iloc[0]:  # time horizon > three weeks
+        steps_between_ticks = int(168 / dt.iloc[0])  # tick every week
+    elif len(timesteps_plot) > 2 * 24 / dt.iloc[0]:  # time horizon > two days
+        steps_between_ticks = int(24 / dt.iloc[0])  # tick every day
+    elif len(timesteps_plot) > 24 / dt.iloc[0]:  # time horizon > a day
+        steps_between_ticks = int(6 / dt.iloc[0])  # tick every six hours
+    else:  # time horizon <= a day
+        steps_between_ticks = int(3 / dt.iloc[0])  # tick every three hours
 
-    hoursteps_plot_ = hoursteps_plot[(steps_between_ticks - 1):]
-    hoursteps_plot_ = hoursteps_plot_[::steps_between_ticks]   # take hole h's
+    hoursteps_plot_ = hoursteps_plot[(steps_between_ticks - 1) :]
+    hoursteps_plot_ = hoursteps_plot_[::steps_between_ticks]  # take hole h's
     xticks = np.insert(hoursteps_plot_, 0, hoursteps_plot[0])  # add 1st step
 
     # set limits and ticks for all axes
@@ -296,30 +327,29 @@ def plot(prob, stf, com, sit, dt, timesteps, timesteps_plot,
         ax.set_frame_on(False)
         ax.set_xlim(hoursteps_plot[0], hoursteps_plot[-1])
         ax.set_xticks(xticks)
-        ax.xaxis.grid(True, 'major', color=to_color('Grid'),
-                      linestyle='-')
-        ax.yaxis.grid(True, 'major', color=to_color('Grid'),
-                      linestyle='-')
-        ax.xaxis.set_ticks_position('none')
-        ax.yaxis.set_ticks_position('none')
+        ax.xaxis.grid(True, "major", color=to_color("Grid"), linestyle="-")
+        ax.yaxis.grid(True, "major", color=to_color("Grid"), linestyle="-")
+        ax.xaxis.set_ticks_position("none")
+        ax.yaxis.set_ticks_position("none")
 
         # group 1,000,000 with commas, but only if maximum or minimum are
         # sufficiently large. Otherwise, keep default tick labels
         ymin, ymax = ax.get_ylim()
         if ymin < -90 or ymax > 90:
             group_thousands = mpl.ticker.FuncFormatter(
-                lambda x, pos: '{:0,d}'.format(int(x)))
+                lambda x, pos: "{:0,d}".format(int(x))
+            )
             ax.yaxis.set_major_formatter(group_thousands)
         else:
-            skip_lowest = mpl.ticker.FuncFormatter(
-                lambda y, pos: '' if pos == 0 else y)
+            skip_lowest = mpl.ticker.FuncFormatter(lambda y, pos: "" if pos == 0 else y)
             ax.yaxis.set_major_formatter(skip_lowest)
 
     return fig
 
 
-def plot_costs(prob, timesteps, figure_size=(16, 8)): ##eigene Funktion --> KeyError: 'No matching timesteps found in costs data.'
-
+def plot_costs(
+    prob, timesteps, figure_size=(16, 8)
+):  ##eigene Funktion --> KeyError: 'No matching timesteps found in costs data.'
     """Plot the costs over the given timesteps.
 
     Args:
@@ -334,14 +364,14 @@ def plot_costs(prob, timesteps, figure_size=(16, 8)): ##eigene Funktion --> KeyE
     import matplotlib as mpl
 
     # Retrieve costs from the model instance
-    costs = get_entity(prob, 'costs')
+    costs = get_entity(prob, "costs")
 
     # Check if costs are available
     if costs is None or costs.empty:
         raise ValueError("No costs data available for plotting.")
 
     # Convert timesteps to hour series for the plot
-    hoursteps = timesteps * get_entity(prob, 'dt').iloc[0]
+    hoursteps = timesteps * get_entity(prob, "dt").iloc[0]
 
     # Ensure the timesteps exist in the costs DataFrame index
     if not all(timestep in costs.index for timestep in timesteps):
@@ -354,26 +384,36 @@ def plot_costs(prob, timesteps, figure_size=(16, 8)): ##eigene Funktion --> KeyE
     fig, ax = plt.subplots(figsize=figure_size)
 
     # Plot the costs
-    ax.plot(hoursteps, costs.loc[timesteps], label='Costs', color=to_color('Costs'))
+    ax.plot(hoursteps, costs.loc[timesteps], label="Costs", color=to_color("Costs"))
 
     # Set labels and title
-    ax.set_xlabel('Time in year (h)')
-    ax.set_ylabel('Costs (Currency Unit)')
-    ax.set_title('Costs over time')
+    ax.set_xlabel("Time in year (h)")
+    ax.set_ylabel("Costs (Currency Unit)")
+    ax.set_title("Costs over time")
 
     # Add grid and legend
-    ax.grid(True, which='both', linestyle='--', linewidth=0.5)
+    ax.grid(True, which="both", linestyle="--", linewidth=0.5)
     ax.legend()
 
     # Format y-axis to show large numbers with commas
-    ax.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(lambda x, pos: '{:,.0f}'.format(x)))
+    ax.yaxis.set_major_formatter(
+        mpl.ticker.FuncFormatter(lambda x, pos: "{:,.0f}".format(x))
+    )
 
     return fig
 
 
-def result_figures(prob, figure_basename, timesteps, plot_title_prefix=None,
-                   plot_tuples=None, plot_sites_name={},
-                   periods=None, extensions=None, **kwds):
+def result_figures(
+    prob,
+    figure_basename,
+    timesteps,
+    plot_title_prefix=None,
+    plot_tuples=None,
+    plot_sites_name={},
+    periods=None,
+    extensions=None,
+    **kwds,
+):
     """Create plots for multiple periods and sites and save them to files.
 
     Args:
@@ -393,19 +433,19 @@ def result_figures(prob, figure_basename, timesteps, plot_title_prefix=None,
     """
 
     # retrieve parameter 'dt' from the model
-    dt = get_entity(prob, 'dt')
+    dt = get_entity(prob, "dt")
 
     # default to all demand (sit, com) tuples if none are specified
     if plot_tuples is None:
-        plot_tuples = get_input(prob, 'demand').columns
+        plot_tuples = get_input(prob, "demand").columns
 
     # default to all timesteps if no periods are given
     if periods is None:
-        periods = {'all': sorted(get_entity(prob, 'tm').index)}
+        periods = {"all": sorted(get_entity(prob, "tm").index)}
 
     # default to PNG and PDF plots if no filetypes are specified
     if extensions is None:
-        extensions = ['png', 'pdf']
+        extensions = ["png", "pdf"]
 
     # create timeseries plot for each demand (site, commodity) timeseries
     for stf, sit, com in plot_tuples:
@@ -423,32 +463,38 @@ def result_figures(prob, figure_basename, timesteps, plot_title_prefix=None,
 
         for period, periodrange in periods.items():
             # do the plotting
-            fig = plot(prob, stf, com, help_sit, dt, timesteps, periodrange,
-                       **kwds)
-            #fig_costs = plot_costs(prob, periodrange) #eigener Code --> funkt noch ned
+            fig = plot(prob, stf, com, help_sit, dt, timesteps, periodrange, **kwds)
+            # fig_costs = plot_costs(prob, periodrange) #eigener Code --> funkt noch ned
             # change the figure title
             ax0 = fig.get_axes()[0]
             # if no custom title prefix is specified, use the figure_basename
             if not plot_title_prefix:
                 plot_title_prefix = os.path.basename(figure_basename)
 
-            new_figure_title = '{}: {} in {}, {}'.format(
-                plot_title_prefix, com, plot_sites_name[sit], stf)
+            new_figure_title = "{}: {} in {}, {}".format(
+                plot_title_prefix, com, plot_sites_name[sit], stf
+            )
             ax0.set_title(new_figure_title)
 
             # save plot to files
             for ext in extensions:
-                fig_filename = '{}-{}-{}-{}-{}.{}'.format(
-                    figure_basename, stf, com, ''.join(
-                        plot_sites_name[sit]), period, ext)
-                fig.savefig(fig_filename, bbox_inches='tight')
+                fig_filename = "{}-{}-{}-{}-{}.{}".format(
+                    figure_basename,
+                    stf,
+                    com,
+                    "".join(plot_sites_name[sit]),
+                    period,
+                    ext,
+                )
+                fig.savefig(fig_filename, bbox_inches="tight")
             plt.close(fig)
 
-            #for ext in extensions:                                          ##eigener code --> funkt. noch ned
+            # for ext in extensions:                                          ##eigener code --> funkt. noch ned
             #    fig_costs_filename = '{}-{}-{}-{}-{}.{}'.format(
             #        figure_basename, stf, com, 'Costs', period, ext)
             #    fig_costs.savefig(fig_costs_filename, bbox_inches='tight')
-            #plt.close(fig_costs)
+            # plt.close(fig_costs)
+
 
 def to_color(obj=None):
     """Assign a deterministic pseudo-random color to argument.
@@ -470,5 +516,6 @@ def to_color(obj=None):
     except KeyError:
         # random deterministic color
         import hashlib
-        color = '#' + hashlib.sha1(obj.encode()).hexdigest()[-6:]
+
+        color = "#" + hashlib.sha1(obj.encode()).hexdigest()[-6:]
     return color

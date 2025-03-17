@@ -3,9 +3,9 @@ from .pyomoio import get_entity, list_entities
 
 
 def create_result_cache(prob):
-    entity_types = ['set', 'par', 'var', 'exp']
-    if hasattr(prob, 'dual'):
-        entity_types.append('con')
+    entity_types = ["set", "par", "var", "exp"]
+    if hasattr(prob, "dual"):
+        entity_types.append("con")
 
     entities = []
     for entity_type in entity_types:
@@ -29,23 +29,23 @@ def save(prob, filename):
     """
     import warnings
     import tables
-    warnings.filterwarnings('ignore',
-                            category=pd.io.pytables.PerformanceWarning)
-    warnings.filterwarnings('ignore',
-                            category=tables.NaturalNameWarning)
 
-    if not hasattr(prob, '_result'):
+    warnings.filterwarnings("ignore", category=pd.io.pytables.PerformanceWarning)
+    warnings.filterwarnings("ignore", category=tables.NaturalNameWarning)
+
+    if not hasattr(prob, "_result"):
         prob._result = create_result_cache(prob)
 
-    with pd.HDFStore(filename, mode='w') as store:
+    with pd.HDFStore(filename, mode="w") as store:
         for name in prob._data.keys():
-            store['data/'+name] = prob._data[name]
+            store["data/" + name] = prob._data[name]
         for name in prob._result.keys():
-            store['result/'+name] = prob._result[name]
+            store["result/" + name] = prob._result[name]
 
 
 class ResultContainer(object):
-    """ Result/input data container for reporting functions. """
+    """Result/input data container for reporting functions."""
+
     def __init__(self, data, result):
         self._data = data
         self._result = result
@@ -60,13 +60,13 @@ def load(filename):
     Returns:
         prob: the modified instance containing the result cache
     """
-    with pd.HDFStore(filename, mode='r') as store:
+    with pd.HDFStore(filename, mode="r") as store:
         data_cache = {}
-        for group in store.get_node('data'):
+        for group in store.get_node("data"):
             data_cache[group._v_name] = store[group._v_pathname]
 
         result_cache = {}
-        for group in store.get_node('result'):
+        for group in store.get_node("result"):
             result_cache[group._v_name] = store[group._v_pathname]
 
     return ResultContainer(data_cache, result_cache)
