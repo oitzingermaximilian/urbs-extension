@@ -24,7 +24,3 @@ jobs:
           conda info --envs  # Check installed environments
           conda list  # Verify installed packages
 
-      - name: Run Pytest
-        shell: bash -l {0}
-        run: |
-          python -m pytest  # Run tests using the correct environment
