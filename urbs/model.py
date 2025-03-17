@@ -1108,7 +1108,7 @@ def res_vertex_rule(m, tm, stf, sit, com, com_type):
         for tech in m.tech:
             for loc in m.location:
                 if loc == sit:  # Ensure we only sum for the correct site
-                    power_surplus += m.balance_ext[stf, loc, tech]
+                    power_surplus += m.balance_ext[t, stf, loc, tech]
 
     print(power_surplus)
     # if com is a stock commodity, the commodity source term e_co_stock
