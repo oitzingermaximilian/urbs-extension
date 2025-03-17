@@ -50,7 +50,7 @@ def create_model(
     # quantities that start with "e_")
     m.dt = pyomo.Param(
         within=pyomo.Reals,
-        initialize=dt,
+        initialize=730,
         doc="Time step duration (in hours), default: 1",
     )
 
