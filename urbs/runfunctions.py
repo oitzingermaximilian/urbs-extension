@@ -302,7 +302,9 @@ def run_scenario(
 
         # Ensure the sheet data has the required columns
         if "Stf" not in sheet_data.columns or "timestep" not in sheet_data.columns:
-            raise ValueError("Sheet data must contain 'Stf' (year) and 'Timestep' columns.")
+            raise ValueError(
+                "Sheet data must contain 'Stf' (year) and 'Timestep' columns."
+            )
 
         # Set 'Stf' and 'Timestep' as the index
         sheet_data = sheet_data.set_index(["Stf", "timestep"])
