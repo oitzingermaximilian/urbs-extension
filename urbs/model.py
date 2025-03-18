@@ -50,7 +50,7 @@ def create_model(
     # quantities that start with "e_")
     m.dt = pyomo.Param(
         within=pyomo.Reals,
-        initialize=dt,
+        initialize=730,
         doc="Time step duration (in hours), default: 1",
     )
 
@@ -76,7 +76,7 @@ def create_model(
     # modelled (i.e. excluding init time step for storage) time steps
     m.tm = pyomo.Set(
         within=m.t,
-        initialize=m.timesteps[1:],
+        initialize=range(1, 13),
         ordered=True,
         doc="Set of modelled timesteps",
     )
@@ -142,9 +142,12 @@ def create_model(
         initialize=m.cost_new_list, doc="Set of cost types (hard-coded)"
     )
     # Base sheet read in
+    m.timesteps_ext = pyomo.Set(initialize=range(1, 13), doc="Timesteps")
     m.y0 = pyomo.Param(initialize=base_params["y0"])  # Initial year
     m.y_end = pyomo.Param(initialize=base_params["y_end"])  # End year
-    m.hours_year = pyomo.Param(initialize=base_params["hours"])  # Hours per year
+    m.hours = pyomo.Param(
+        m.timesteps_ext, initialize=base_params["hours"]
+    )  # Hours per year
     # locations sheet read in
     m.location = pyomo.Set(
         initialize=data_urbsextensionv1["locations_list"]
@@ -265,7 +268,11 @@ def create_model(
     # loadfactors sheet read in
     # Capacity to Balance with loadfactor and h/a
     m.lf_solar = pyomo.Param(
-        m.stf, m.location, m.tech, initialize=data_urbsextensionv1["loadfactors_dict"]
+        m.timesteps_ext,
+        m.stf,
+        m.location,
+        m.tech,
+        initialize=data_urbsextensionv1["loadfactors_dict"],
     )  # lf Solar
 
     ########################################
@@ -716,19 +723,19 @@ def create_model(
 
     # balance Variables (MWh) : only used for results & res_vertex_rule
     m.balance_ext = pyomo.Var(
-        m.stf, m.location, m.tech, within=pyomo.NonNegativeReals
+        m.timesteps_ext, m.stf, m.location, m.tech, within=pyomo.NonNegativeReals
     )  # --> res_vertex_rule
     m.balance_import_ext = pyomo.Var(
-        m.stf, m.location, m.tech, within=pyomo.NonNegativeReals
+        m.timesteps_ext, m.stf, m.location, m.tech, within=pyomo.NonNegativeReals
     )
     m.balance_outofstock_ext = pyomo.Var(
-        m.stf, m.location, m.tech, within=pyomo.NonNegativeReals
+        m.timesteps_ext, m.stf, m.location, m.tech, within=pyomo.NonNegativeReals
     )
     m.balance_EU_primary_ext = pyomo.Var(
-        m.stf, m.location, m.tech, within=pyomo.NonNegativeReals
+        m.timesteps_ext, m.stf, m.location, m.tech, within=pyomo.NonNegativeReals
     )
     m.balance_EU_secondary_ext = pyomo.Var(
-        m.stf, m.location, m.tech, within=pyomo.NonNegativeReals
+        m.timesteps_ext, m.stf, m.location, m.tech, within=pyomo.NonNegativeReals
     )
 
     # cost Variables (€/MW): main objective Function --> minimize cost
@@ -816,19 +823,23 @@ def create_model(
     )
 
     m.balance_import_constraint = pyomo.Constraint(
-        m.stf, m.location, m.tech, rule=convert_capacity_1_rule
+        m.timesteps_ext, m.stf, m.location, m.tech, rule=convert_capacity_1_rule
     )
     m.balance_balance_outofstock_constraint = pyomo.Constraint(
-        m.stf, m.location, m.tech, rule=convert_capacity_2_rule
+        m.timesteps_ext, m.stf, m.location, m.tech, rule=convert_capacity_2_rule
     )
     m.balance_EU_primary_constraint = pyomo.Constraint(
-        m.stf, m.location, m.tech, rule=convert_capacity_3_rule
+        m.timesteps_ext, m.stf, m.location, m.tech, rule=convert_capacity_3_rule
     )
     m.balance_EU_secondary_constraint = pyomo.Constraint(
-        m.stf, m.location, m.tech, rule=convert_capacity_4_rule
+        m.timesteps_ext, m.stf, m.location, m.tech, rule=convert_capacity_4_rule
     )
     m.balance_ext_constraint = pyomo.Constraint(
-        m.stf, m.location, m.tech, rule=convert_totalcapacity_to_balance
+        m.timesteps_ext,
+        m.stf,
+        m.location,
+        m.tech,
+        rule=convert_totalcapacity_to_balance,
     )
 
     m.yearly_storagecost_constraint = pyomo.Constraint(
@@ -1102,14 +1113,12 @@ def res_vertex_rule(m, tm, stf, sit, com, com_type):
     #                       amount of the commodity com
     power_surplus = -commodity_balance(m, tm, stf, sit, com)
 
-    # Add extra modelled capacity contribution to power surplus
+    # Add extra modelled capacity contribution to power surplus for "Elec"
     if com == "Elec":
-        # Only add balance_ext where sit matches the location
+        # Filter balance_ext for the current timestep, year, and site
         for tech in m.tech:
-            for loc in m.location:
-                if loc == sit:  # Ensure we only sum for the correct site
-                    power_surplus += m.balance_ext[stf, loc, tech]
-
+            if (tm, stf, sit, tech) in m.balance_ext:
+                power_surplus += m.balance_ext[tm, stf, sit, tech]
     print(power_surplus)
     # if com is a stock commodity, the commodity source term e_co_stock
     # can supply a possibly negative power_surplus
@@ -1719,59 +1728,71 @@ def def_costs_new(m, cost_type_new):
 # Convert capacity solar MW to Balance MWh
 
 
-def convert_totalcapacity_to_balance(m, stf, location, tech):
+def convert_totalcapacity_to_balance(m, timesteps_ext, stf, location, tech):
     balance_value = (
         m.capacity_ext[stf, location, tech]
-        * m.lf_solar[stf, location, tech]
-        * m.hours_year
+        * m.lf_solar[timesteps_ext, stf, location, tech]
+        * m.hours[timesteps_ext]
     )
-    print(f"Debug: STF = {stf}, Location = {location}, Tech = {tech}")
+    print(
+        f"Debug: time = {timesteps_ext}, STF = {stf}, Location = {location}, Tech = {tech}"
+    )
     print(f"Total Capacity to Balance (Solar) = {balance_value}")
-    return m.balance_ext[stf, location, tech] == balance_value
+    return m.balance_ext[timesteps_ext, stf, location, tech] == balance_value
 
 
-def convert_capacity_1_rule(m, stf, location, tech):
+def convert_capacity_1_rule(m, timesteps_ext, stf, location, tech):
     balance_value = (
-        m.capacity_ext_imported[stf, location, tech]
-        * m.lf_solar[stf, location, tech]
-        * m.hours_year
+        m.capacity_ext_imported[stf, location, tech]  # Capacity in MW
+        * m.lf_solar[timesteps_ext, stf, location, tech]  # Load factor
+        * m.hours[timesteps_ext]  # Duration of the timestep in hours
     )
-    print(f"Debug: STF = {stf}, Location = {location}, Tech = {tech}")
+    print(
+        f"Debug:time = {timesteps_ext}, STF = {stf}, Location = {location}, Tech = {tech}"
+    )
     print(f"Total Balance (Imported Solar) = {balance_value}")
-    return m.balance_import_ext[stf, location, tech] == balance_value
+    return m.balance_import_ext[timesteps_ext, stf, location, tech] == balance_value
 
 
-def convert_capacity_2_rule(m, stf, location, tech):
+def convert_capacity_2_rule(m, timesteps_ext, stf, location, tech):
     balance_value = (
         m.capacity_ext_stockout[stf, location, tech]
-        * m.lf_solar[stf, location, tech]
-        * m.hours_year
+        * m.lf_solar[timesteps_ext, stf, location, tech]
+        * m.hours[timesteps_ext]
     )
-    print(f"Debug: STF = {stf}, Location = {location}, Tech = {tech}")
+    print(
+        f"Debug:time = {timesteps_ext}, STF = {stf}, Location = {location}, Tech = {tech}"
+    )
     print(f"Total Balance (Stockout Solar) = {balance_value}")
-    return m.balance_outofstock_ext[stf, location, tech] == balance_value
+    return m.balance_outofstock_ext[timesteps_ext, stf, location, tech] == balance_value
 
 
-def convert_capacity_3_rule(m, stf, location, tech):
+def convert_capacity_3_rule(m, timesteps_ext, stf, location, tech):
     balance_value = (
         m.capacity_ext_euprimary[stf, location, tech]
-        * m.lf_solar[stf, location, tech]
-        * m.hours_year
+        * m.lf_solar[timesteps_ext, stf, location, tech]
+        * m.hours[timesteps_ext]
     )
-    print(f"Debug: STF = {stf}, Location = {location}, Tech = {tech}")
+    print(
+        f"Debug:time = {timesteps_ext}, STF = {stf}, Location = {location}, Tech = {tech}"
+    )
     print(f"Total Balance (EU Primary Solar) = {balance_value}")
-    return m.balance_EU_primary_ext[stf, location, tech] == balance_value
+    return m.balance_EU_primary_ext[timesteps_ext, stf, location, tech] == balance_value
 
 
-def convert_capacity_4_rule(m, stf, location, tech):
+def convert_capacity_4_rule(m, timesteps_ext, stf, location, tech):
     balance_value = (
         m.capacity_ext_eusecondary[stf, location, tech]
-        * m.lf_solar[stf, location, tech]
-        * m.hours_year
+        * m.lf_solar[timesteps_ext, stf, location, tech]
+        * m.hours[timesteps_ext]
     )
-    print(f"Debug: STF = {stf}, Location = {location}, Tech = {tech}")
+    print(
+        f"Debug:time = {timesteps_ext}, STF = {stf}, Location = {location}, Tech = {tech}"
+    )
     print(f"Total Balance (EU Secondary Solar) = {balance_value}")
-    return m.balance_EU_secondary_ext[stf, location, tech] == balance_value
+    return (
+        m.balance_EU_secondary_ext[timesteps_ext, stf, location, tech] == balance_value
+    )
 
 
 # Calculate yearly Solar Costs only for excel output

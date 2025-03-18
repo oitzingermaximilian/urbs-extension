@@ -109,8 +109,12 @@ def get_constants(instance):
     e_pro_out_elec = {
         key: value for key, value in e_pro_out_df.items() if key[-1] == "Elec"
     }
+
     # Convert to DataFrame
     df_Elec = pd.DataFrame(list(e_pro_out_elec.items()), columns=["Index", "Value"])
+    df_Elec["Timestep"] = df_Elec["Index"].apply(
+        lambda x: x[0]
+    )  # Extract timestep from the MultiIndex
     df_Elec["Stf"] = df_Elec["Index"].apply(
         lambda x: int(x[1])
     )  # Extract year from the MultiIndex
@@ -120,47 +124,70 @@ def get_constants(instance):
     df_Elec["Process"] = df_Elec["Index"].apply(
         lambda x: x[3]
     )  # Extract process from the MultiIndex
+
+    # Drop the 'Elec' column (not needed in the final DataFrame)
+    df_Elec = df_Elec.drop(columns=["Index"])
+
     # Process bext data
     df_bext = pd.DataFrame(bext.items(), columns=["Index", "balance_ext"])
-    df_bext["Stf"] = df_bext["Index"].apply(
+    df_bext["Timestep"] = df_bext["Index"].apply(
         lambda x: x[0]
+    )  # Extract timestep from the Index
+    df_bext["Stf"] = df_bext["Index"].apply(
+        lambda x: x[1]
     )  # Extract year from the Index
     df_bext["Site"] = df_bext["Index"].apply(
-        lambda x: x[1]
+        lambda x: x[2]
     )  # Extract site from the Index
     df_bext["Process"] = df_bext["Index"].apply(
-        lambda x: x[2]
+        lambda x: x[3]
     )  # Extract technology from the Index
+
+    # Drop the 'Index' column (not needed in the final DataFrame)
+    df_bext = df_bext.drop(columns=["Index"])
+
     # Create ext_process DataFrame dynamically
     ext_process_list = []
-    for year in df_bext["Stf"].unique():
-        for site in df_bext[df_bext["Stf"] == year]["Site"].unique():
-            for tech in df_bext[(df_bext["Stf"] == year) & (df_bext["Site"] == site)][
-                "Process"
-            ].unique():
-                ext_process_list.append(
-                    {
-                        "Index": (1, float(year), site, tech, "Elec"),
-                        "Value": df_bext[
-                            (df_bext["Stf"] == year)
-                            & (df_bext["Site"] == site)
-                            & (df_bext["Process"] == tech)
-                        ]["balance_ext"].values[0],
-                        "Stf": year,
-                        "Site": site,
-                        "Process": tech,
-                    }
-                )
+    for timestep in df_bext["Timestep"].unique():
+        for year in df_bext[df_bext["Timestep"] == timestep]["Stf"].unique():
+            for site in df_bext[
+                (df_bext["Timestep"] == timestep) & (df_bext["Stf"] == year)
+            ]["Site"].unique():
+                for tech in df_bext[
+                    (df_bext["Timestep"] == timestep)
+                    & (df_bext["Stf"] == year)
+                    & (df_bext["Site"] == site)
+                ]["Process"].unique():
+                    ext_process_list.append(
+                        {
+                            "Value": df_bext[
+                                (df_bext["Timestep"] == timestep)
+                                & (df_bext["Stf"] == year)
+                                & (df_bext["Site"] == site)
+                                & (df_bext["Process"] == tech)
+                            ]["balance_ext"].values[0],
+                            "Timestep": timestep,
+                            "Stf": year,
+                            "Site": site,
+                            "Process": tech,
+                        }
+                    )
+
     ext_process = pd.DataFrame(ext_process_list)
+
     # Combine the data
     combined_balance = pd.concat([df_Elec, ext_process], ignore_index=True)
-    combined_balance = combined_balance.sort_values(by="Stf").reset_index(drop=True)
-    # Split the 'Index' column into individual columns
-    combined_balance[["tm", "Year", "Site", "Process", "Type"]] = pd.DataFrame(
-        combined_balance["Index"].tolist(), index=combined_balance.index
+
+    # Group by 'Stf' (year) and sort by 'Timestep' within each year
+    combined_balance = combined_balance.sort_values(by=["Stf", "Timestep"]).reset_index(
+        drop=True
     )
+
     # Select relevant columns
-    combined_balance = combined_balance[["Stf", "Site", "Process", "Value"]]
+    combined_balance = combined_balance[["Timestep", "Stf", "Site", "Process", "Value"]]
+
+    # Display the final DataFrame
+    print(combined_balance)
 
     ####extension_cost
     df_process = pd.DataFrame(process_cost)

@@ -297,27 +297,33 @@ def run_scenario(
         return stocklvl_dict
 
     def process_loadfactors_sheet(sheet_data):
-        """Processes the DCR (depreciation cost rate) data into a dictionary indexed by (year, location, technology)."""
+        """Processes the load factors data into a dictionary indexed by (timestep, year, location, technology)."""
         loadfactors_dict = {}
 
-        # Set 'Stf' (year column) as the index
-        sheet_data = sheet_data.set_index("Stf")
+        # Ensure the sheet data has the required columns
+        if "Stf" not in sheet_data.columns or "timestep" not in sheet_data.columns:
+            raise ValueError(
+                "Sheet data must contain 'Stf' (year) and 'Timestep' columns."
+            )
+
+        # Set 'Stf' and 'Timestep' as the index
+        sheet_data = sheet_data.set_index(["Stf", "timestep"])
 
         # Iterate over the columns (technologies and locations)
         for col in sheet_data.columns:
-            # Each column is in the form 'technology.location' (e.g., 'solarPV.EU27')
+            # Each column is in the form 'location_technology' (e.g., 'EU27_solarPV')
             parts = col.split("_")
             if len(parts) < 2:
-                continue  # Skip columns that don't match the expected format (i.e., 'tech.location')
+                continue  # Skip columns that don't match the expected format (i.e., 'location_tech')
 
-            tech = parts[1]  # Extract technology (e.g., "solarPV")
             location = parts[0]  # Extract location (e.g., "EU27")
+            tech = parts[1]  # Extract technology (e.g., "solarPV")
 
-            # Iterate over the rows (years) for each column
-            for year, value in sheet_data[col].items():
-                # Store the value in the dictionary as (year, location, technology) : dcr value
-                loadfactors_dict[(year, location, tech)] = value
-
+            # Iterate over the rows (years and timesteps) for each column
+            for (year, timestep), value in sheet_data[col].items():
+                # Store the value in the dictionary as (timestep, year, location, technology) : load factor value
+                loadfactors_dict[(timestep, year, location, tech)] = value
+        print(loadfactors_dict)
         return loadfactors_dict
 
     def load_data_from_excel(file_path):
