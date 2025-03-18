@@ -28,9 +28,9 @@ objective = "cost"  # set either 'cost' or 'CO2' as objective
 solver = "gurobi"
 
 # simulation timesteps
-(offset, length) = (0, 1)  # time step selection
+(offset, length) = (0, 12)  # time step selection
 timesteps = range(offset, offset + length + 1)
-dt = 8760  # length of each time step (unit: hours)
+dt = 730  # length of each time step (unit: hours)
 
 # detailed reporting commodity/sites
 report_tuples = []
