@@ -1113,15 +1113,12 @@ def res_vertex_rule(m, tm, stf, sit, com, com_type):
     #                       amount of the commodity com
     power_surplus = -commodity_balance(m, tm, stf, sit, com)
 
-    # Add extra modelled capacity contribution to power surplus
+    # Add extra modelled capacity contribution to power surplus for "Elec"
     if com == "Elec":
-        # Only add balance_ext where sit matches the location
+        # Filter balance_ext for the current timestep, year, and site
         for tech in m.tech:
-            for loc in m.location:
-                for t in m.timesteps_ext:
-                    if loc == sit:  # Ensure we only sum for the correct site
-                        power_surplus += m.balance_ext[t, stf, loc, tech]
-
+            if (tm, stf, sit, tech) in m.balance_ext:
+                power_surplus += m.balance_ext[tm, stf, sit, tech]
     print(power_surplus)
     # if com is a stock commodity, the commodity source term e_co_stock
     # can supply a possibly negative power_surplus
