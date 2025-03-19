@@ -489,13 +489,18 @@ def create_model(
 
     ##########----------end EEM Addition-----------###############
     ##########----------    urbs-scrap  -----------###############
-    m.f_scrap = pyo.Param(m.location, m.tech, initialize=1, doc="tons per MW")
-    m.f_mining = pyo.Param(m.location, m.tech, initialize=1, doc="tons per MW")
-    m.f_recycling = pyo.Param(m.location, m.tech, initialize=1, doc="recycling efficiency in %")
-    m.f_scrap_rec = pyo.Param(m.location, m.tech, initialize=1, doc="cost for recycling in EUR/ton")
-    m.f_increase = pyo.Param(m.location, m.tech, initialize=1, doc="Fraction of increase in production")
-
-
+    m.f_scrap = pyomo.Param(m.location, m.tech, initialize=1, doc="tons per MW")
+    m.f_mining = pyomo.Param(m.location, m.tech, initialize=1, doc="tons per MW")
+    m.f_recycling = pyomo.Param(
+        m.location, m.tech, initialize=1, doc="recycling efficiency in %"
+    )
+    m.f_scrap_rec = pyomo.Param(
+        m.location, m.tech, initialize=1, doc="cost for recycling in EUR/ton"
+    )
+    m.f_increase = pyomo.Param(
+        m.location, m.tech, initialize=1, doc="Fraction of increase in production"
+    )
+    m.capacity_dec_start = pyomo.Param()
 
     ##########----------end urbs-scrap  -----------###############
     # tuple sets
@@ -763,9 +768,15 @@ def create_model(
     )
     ##########----------    urbs-scrap  -----------###############
     m.capacity_dec = pyomo.Var(m.stf, m.location, m.tech, domain=pyomo.NonNegativeReals)
-    m.capacity_scrap_dec = pyomo.Var(m.stf, m.location, m.tech, domain=pyomo.NonNegativeReals)
-    m.capacity_scrap_rec = pyomo.Var(m.stf, m.location, m.tech, domain=pyomo.NonNegativeReals)
-    m.capacity_scrap_total = pyomo.Var(m.stf, m.location, m.tech, domain=pyomo.NonNegativeReals)
+    m.capacity_scrap_dec = pyomo.Var(
+        m.stf, m.location, m.tech, domain=pyomo.NonNegativeReals
+    )
+    m.capacity_scrap_rec = pyomo.Var(
+        m.stf, m.location, m.tech, domain=pyomo.NonNegativeReals
+    )
+    m.capacity_scrap_total = pyomo.Var(
+        m.stf, m.location, m.tech, domain=pyomo.NonNegativeReals
+    )
     m.cost_scrap = pyomo.Var(m.stf, m.location, m.tech, domain=pyomo.NonNegativeReals)
     ##########----------end urbs-scrap  -----------###############
     if m.mode["tra"]:
@@ -1724,13 +1735,18 @@ def def_costs_new(m, cost_type_new):
         # Calculating total EU secondary cost across all time steps
         total_eu_cost_secondary = sum(
             (
-                m.EU_secondary_costs[stf, site, tech]
-                - m.pricereduction_sec[stf, site, tech]
+                (
+                    (
+                        m.EU_secondary_costs[stf, site, tech]
+                        - m.pricereduction_sec[stf, site, tech]
+                    )
+                    * m.capacity_ext_eusecondary[stf, site, tech]
+                )
+                + m.cost_scrap[stf, site, tech]
+                for stf in m.stf
+                for site in m.location
+                for tech in m.tech
             )
-            * m.capacity_ext_eusecondary[stf, site, tech]
-            for stf in m.stf
-            for site in m.location
-            for tech in m.tech
         )
 
         print("Calculating EU Secondary Cost Total:")
@@ -1854,6 +1870,7 @@ def calculate_yearly_EU_secondary(m, stf, location, tech):
         m.EU_secondary_costs[stf, location, tech]
         - m.pricereduction_sec[stf, location, tech]
     ) * m.capacity_ext_eusecondary[stf, location, tech]
+    +m.cost_scrap[stf, location, tech]
     print(f"Debug: STF = {stf}, Location = {location}, Tech = {tech}")
     print(f"Total Yearly EU Secondary Cost = {eu_secondary_cost_value}")
     return m.costs_EU_secondary[stf, location, tech] == eu_secondary_cost_value
@@ -1868,6 +1885,7 @@ def capacity_ext_growth_rule(m, stf, location, tech):
             m.capacity_ext[stf, location, tech]
             == m.capacity_ext[stf - 1, location, tech]
             + m.capacity_ext_new[stf, location, tech]
+            - m.capacity_dec[stf, location, tech]
         )
         print(f"Capacity extension package = {capacity_extensionpackage}")
         return capacity_extensionpackage
@@ -1879,6 +1897,7 @@ def initial_capacity_rule(m, stf, location, tech):
             m.capacity_ext[stf, location, tech]
             == m.Installed_Capacity_Q_s[location, tech]
             + m.capacity_ext_new[stf, location, tech]
+            - m.capacity_dec[stf, location, tech]
         )
         print(
             f"Initial Capacity for {tech} at {location} in year {stf}: {m.capacity_ext[stf, location, tech]} = "
@@ -2481,3 +2500,88 @@ def non_negativity_z_eq_sec(m, stf, location, tech, nsteps_sec):
     )
 
     return lhs_value >= 0
+
+
+# Scrap 1: Determine EOL Scrap
+def decommissioned_capacity_rule(m, stf, location, tech):
+    if m.y0 <= stf - m.l[location, tech]:
+        return (
+            m.capacity_dec[stf, location, tech]
+            == m.capacity_ext_new[stf - m.l[location, tech], location, tech]
+        )
+    else:
+        return (
+            m.capacity_dec[stf, location, tech]
+            == m.capacity_dec_start[stf, location, tech]
+        )
+
+
+# Scrap 2
+def capacity_scrap_dec_rule(m, stf, location, tech):
+    return (
+        m.capacity_scrap_dec[stf, location, tech]
+        == m.f_scrap[location, tech] * m.capacity_dec[stf, location, tech]
+    )
+
+
+# Scrap 3
+def capacity_scrap_rec_rule(m, stf, location, tech):
+    return m.capacity_scrap_rec[stf, location, tech] == (
+        (m.f_mining[location, tech] / m.f_recycling[location, tech])
+        * m.capacity_ext_eusecondary[stf, location, tech]
+    )
+
+
+# Scrap 4
+def capacity_scrap_total_rule(m, stf, location, tech):
+    if stf == m.y0:
+        return (
+            m.capacity_scrap_total[stf, location, tech]
+            == m.capacity_scrap_dec[stf, location, tech]
+            - m.capacity_scrap_rec[stf, location, tech]
+        )
+    else:
+        return pyomo.Constraint.Skip
+
+
+# Scrap 5
+def capacity_scrap_total_rule(m, stf, location, tech):
+    if stf == m.y0:
+        return pyomo.Constraint.Skip
+    else:
+        return (
+            m.capacity_scrap_total[stf, location, tech]
+            == m.capacity_scrap_total[stf - 1, location, tech]
+            + m.capacity_scrap_dec[stf, location, tech]
+            - m.capacity_scrap_rec[stf, location, tech]
+        )
+
+
+# Scrap 6
+def cost_scrap_rule(m, stf, location, tech):
+    return (
+        m.cost_scrap[stf, location, tech]
+        == m.f_scrap_rec[stf, location, tech]
+        * m.capacity_scrap_rec[stf, location, tech]
+    )
+
+
+# Scrap 7
+def scrap_total_decrease_rule(m, stf, location, tech):
+    if stf >= m.y0:
+        return (
+            m.capacity_scrap_total[stf, location, tech]
+            <= m.capacity_scrap_total[stf - 1, location, tech]
+        )
+    else:
+        return pyomo.Constraint.Skip
+
+
+# Scrap 8
+def scrap_recycling_increase_rule(m, stf, location, tech):
+    lhs = (
+        m.capacity_scrap_rec[stf, location, tech]
+        - m.capacity_scrap_rec[stf - 1, location, tech]
+    )
+    rhs = m.f_increase[location, tech] * m.capacity_scrap_rec[stf - 1, location, tech]
+    return lhs <= rhs
