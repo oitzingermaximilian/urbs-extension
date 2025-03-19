@@ -94,7 +94,8 @@ def get_constants(instance):
     print("capacity ext total", capacity_ext_total)
     e_pro_out_df = get_entity(instance, "e_pro_out")
     print("e pro out df", e_pro_out_df)
-    # print(e_pro_out_df)
+    scrapdf = get_entity(instance, "capacity_scrap_total")
+    decomdf = get_entity(instance, "capacity_dec")
 
     #####Process df's to be used in report sheets
 
@@ -296,6 +297,8 @@ def get_constants(instance):
         combined_balance,
         decisionvalues_pri,
         decisionvalues_sec,
+        scrapdf,
+        decomdf,
     )
 
 

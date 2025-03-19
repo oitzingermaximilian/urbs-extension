@@ -33,6 +33,8 @@ def report(instance, filename, report_tuples=None, report_sites_name={}):
         combined_balance,
         decisionvalues_pri,
         decisionvalues_sec,
+        scrapdf,
+        decomdf,
     ) = get_constants(instance)
 
     # create spreadsheet writer object
@@ -49,6 +51,8 @@ def report(instance, filename, report_tuples=None, report_sites_name={}):
         combined_balance.to_excel(writer, sheet_name="extension_balance", index=False)
         df_co2.to_excel(writer, sheet_name="us_co2", index=False)
         capacity_ext_total.to_excel(writer, sheet_name="extension_only_totalcapacity")
+        scrapdf.to_excel(writer, sheet_name="scrap")
+        decomdf.to_excel(writer, sheet_name="decom")
 
         #################################################################################
 

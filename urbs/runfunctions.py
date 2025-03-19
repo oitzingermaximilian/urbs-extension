@@ -193,7 +193,12 @@ def run_scenario(
                 elif costtype == "recycling":
                     recyclingcost_dict[key] = value
 
-        return importcost_dict, manufacturingcost_dict, remanufacturingcost_dict, recyclingcost_dict
+        return (
+            importcost_dict,
+            manufacturingcost_dict,
+            remanufacturingcost_dict,
+            recyclingcost_dict,
+        )
 
     def process_technology_sheet(technologies_data):
         """Processes technology data into a structured dictionary indexed by location and technology."""
@@ -372,9 +377,12 @@ def run_scenario(
         print(locations_list)
 
         # Process the cost sheet into import, manufacturing, and remanufacturing cost dicts
-        importcost_dict, manufacturingcost_dict, remanufacturingcost_dict, recyclingcost_dict = (
-            process_cost_sheet(cost_sheet)
-        )
+        (
+            importcost_dict,
+            manufacturingcost_dict,
+            remanufacturingcost_dict,
+            recyclingcost_dict,
+        ) = process_cost_sheet(cost_sheet)
 
         # Now we create the 'data_urbsextensionv1' dictionary to return all data
         data_urbsextensionv1 = {
@@ -422,16 +430,21 @@ def run_scenario(
     optim = SolverFactory("gurobi")  # cplex, glpk, gurobi, ...
     optim = setup_solver(optim, logfile=log_filename)
     result = optim.solve(prob, tee=True)
-    #assert str(result.solver.termination_condition) == "optimal"
+    # assert str(result.solver.termination_condition) == "optimal"
 
-    #solver debug
+    # solver debug
 
     # Check solver termination condition
     if str(result.solver.termination_condition) != "optimal":
         print(f"Solver termination condition: {result.solver.termination_condition}")
 
-        if result.solver.termination_condition == TerminationCondition.infeasibleOrUnbounded:
-            print("Model is either infeasible or unbounded. Proceeding with IIS analysis...")
+        if (
+            result.solver.termination_condition
+            == TerminationCondition.infeasibleOrUnbounded
+        ):
+            print(
+                "Model is either infeasible or unbounded. Proceeding with IIS analysis..."
+            )
 
             # Export the Pyomo model to an LP file
             lp_file_path = os.path.abspath("model.lp")
@@ -455,13 +468,19 @@ def run_scenario(
                 print("\nConflicting constraints in the IIS:")
                 for c in gurobi_model.getConstrs():
                     if c.IISConstr:
-                        print(f"Constraint '{c.ConstrName}': {gurobi_model.getRow(c)} {c.Sense} {c.RHS}")
+                        print(
+                            f"Constraint '{c.ConstrName}': {gurobi_model.getRow(c)} {c.Sense} {c.RHS}"
+                        )
 
                 for v in gurobi_model.getVars():
                     if v.IISLB:
-                        print(f"Variable '{v.VarName}' has a conflicting lower bound: {v.LB}")
+                        print(
+                            f"Variable '{v.VarName}' has a conflicting lower bound: {v.LB}"
+                        )
                     if v.IISUB:
-                        print(f"Variable '{v.VarName}' has a conflicting upper bound: {v.UB}")
+                        print(
+                            f"Variable '{v.VarName}' has a conflicting upper bound: {v.UB}"
+                        )
             except Exception as e:
                 print(f"Error computing IIS: {e}")
         else:
