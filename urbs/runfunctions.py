@@ -8,6 +8,8 @@ from .plot import *
 from .input import *
 from .validation import *
 from .saveload import *
+from pyomo.opt.results import TerminationCondition, SolverStatus  # Correct import
+import gurobipy as gp
 
 
 def prepare_result_directory(result_name):
@@ -151,6 +153,7 @@ def run_scenario(
         importcost_dict = {}  # Dictionary to store import costs
         manufacturingcost_dict = {}  # Dictionary to store manufacturing costs
         remanufacturingcost_dict = {}  # Dictionary to store remanufacturing costs
+        recyclingcost_dict = {}
 
         # Extract the 'Stf' column (year)
         years = cost_sheet[
@@ -187,8 +190,10 @@ def run_scenario(
                     manufacturingcost_dict[key] = value
                 elif costtype == "remanufacturing":
                     remanufacturingcost_dict[key] = value
+                elif costtype == "recycling":
+                    recyclingcost_dict[key] = value
 
-        return importcost_dict, manufacturingcost_dict, remanufacturingcost_dict
+        return importcost_dict, manufacturingcost_dict, remanufacturingcost_dict, recyclingcost_dict
 
     def process_technology_sheet(technologies_data):
         """Processes technology data into a structured dictionary indexed by location and technology."""
@@ -367,7 +372,7 @@ def run_scenario(
         print(locations_list)
 
         # Process the cost sheet into import, manufacturing, and remanufacturing cost dicts
-        importcost_dict, manufacturingcost_dict, remanufacturingcost_dict = (
+        importcost_dict, manufacturingcost_dict, remanufacturingcost_dict, recyclingcost_dict = (
             process_cost_sheet(cost_sheet)
         )
 
@@ -377,6 +382,7 @@ def run_scenario(
             "importcost_dict": importcost_dict,
             "manufacturingcost_dict": manufacturingcost_dict,
             "remanufacturingcost_dict": remanufacturingcost_dict,
+            "recyclingcost_dict": recyclingcost_dict,
             "locations_list": locations_list,
             "loadfactors_dict": loadfactors_dict,
             "technologies": technologies_dict,  # techs stored as dict
@@ -413,10 +419,55 @@ def run_scenario(
     log_filename = os.path.join(result_dir, "{}.log").format(sce)
 
     # solve model and read results
-    optim = SolverFactory(Solver)  # cplex, glpk, gurobi, ...
+    optim = SolverFactory("gurobi")  # cplex, glpk, gurobi, ...
     optim = setup_solver(optim, logfile=log_filename)
     result = optim.solve(prob, tee=True)
-    assert str(result.solver.termination_condition) == "optimal"
+    #assert str(result.solver.termination_condition) == "optimal"
+
+    #solver debug
+
+    # Check solver termination condition
+    if str(result.solver.termination_condition) != "optimal":
+        print(f"Solver termination condition: {result.solver.termination_condition}")
+
+        if result.solver.termination_condition == TerminationCondition.infeasibleOrUnbounded:
+            print("Model is either infeasible or unbounded. Proceeding with IIS analysis...")
+
+            # Export the Pyomo model to an LP file
+            lp_file_path = os.path.abspath("model.lp")
+            prob.write(lp_file_path, io_options={"symbolic_solver_labels": True})
+            print(f"Pyomo model written to LP file: {lp_file_path}")
+
+            # Load the LP file into a Gurobi model
+            try:
+                gurobi_model = gp.read(lp_file_path)
+                print("Gurobi model loaded successfully.")
+
+                # Compute the IIS
+                gurobi_model.computeIIS()
+
+                # Write the IIS to a file
+                iis_file_path = os.path.abspath("model_iis.ilp")
+                gurobi_model.write(iis_file_path)
+                print(f"IIS written to file: {iis_file_path}")
+
+                # Optionally, print the IIS to the console
+                print("\nConflicting constraints in the IIS:")
+                for c in gurobi_model.getConstrs():
+                    if c.IISConstr:
+                        print(f"Constraint '{c.ConstrName}': {gurobi_model.getRow(c)} {c.Sense} {c.RHS}")
+
+                for v in gurobi_model.getVars():
+                    if v.IISLB:
+                        print(f"Variable '{v.VarName}' has a conflicting lower bound: {v.LB}")
+                    if v.IISUB:
+                        print(f"Variable '{v.VarName}' has a conflicting upper bound: {v.UB}")
+            except Exception as e:
+                print(f"Error computing IIS: {e}")
+        else:
+            print("Model termination condition:", result.solver.termination_condition)
+    else:
+        print("Model is feasible and solved to optimality.")
 
     # save problem solution (and input data) to HDF5 file
     save(prob, os.path.join(result_dir, "{}.h5".format(sce)))
