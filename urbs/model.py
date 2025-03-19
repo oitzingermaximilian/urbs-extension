@@ -2413,6 +2413,26 @@ def non_negativity_z_eq_pri(m, stf, nsteps_pri):
 # -------EU-Secondary-------#
 # equation 1
 def costsavings_rule_sec(m, stf, location, tech):
+    """
+    Calculates and verifies the price reduction for a specific staff, location, and
+    technology combination based on the provided model's parameters.
+
+    This function computes the sum of product values from the `P_sec` and `BD_sec`
+    attributes of the model over a range of steps (`nsteps_sec`). The calculated
+    value is then checked against a predefined `pricereduction_sec` value to assert
+    its correctness.
+
+    Args:
+        m: The optimization model containing attributes such as `P_sec`, `BD_sec`,
+            `nsteps_sec`, and `pricereduction_sec`.
+        stf: The time step
+        location: The location identifier associated with the calculation.
+        tech: The technology identifier used in the calculation.
+
+    Returns:
+        A boolean expression asserting if the calculated price reduction matches
+        the predefined value in the model.
+    """
     # Debug statement to check the components of the sum
     pricereduction_value_sec = sum(
         m.P_sec[n, tech, location] * m.BD_sec[stf, location, tech, n]
@@ -2427,6 +2447,27 @@ def costsavings_rule_sec(m, stf, location, tech):
 
 # equation 2
 def BD_limitation_rule_sec(m, stf, location, tech):
+    """
+    Calculates and enforces the rule for BD limitation by ensuring the sum of BD values
+    across all applicable steps does not exceed a specified upper bound.
+
+    This function aggregates the values of the `BD_sec` parameter across all steps
+    (`m.nsteps_sec`) for a specific staff (`stf`), location (`location`), and technology
+    (`tech`). If the computed sum is less than or equal to 1, the rule is satisfied.
+
+    Args:
+        m: The model containing the decision variables and parameters required for
+            the calculation.
+        stf: The time step
+        location: The location identifier within the model as a dimension in
+            `BD_sec`.
+        tech: The technology identifier within the model as a dimension in
+            `BD_sec`.
+
+    Returns:
+        bool: True if the sum of the BD values is less than or equal to 1, indicating
+            that the limitation rule is satisfied. False otherwise.
+    """
     # Debug statement to print the sum of BD[stf, n]
     bd_sum_value_sec = sum(m.BD_sec[stf, location, tech, n] for n in m.nsteps_sec)
     print(
@@ -2438,6 +2479,26 @@ def BD_limitation_rule_sec(m, stf, location, tech):
 
 # equation 3
 def relation_pnew_to_pprior_sec(m, stf, location, tech):
+    """
+    Determines the relationship between the price reductions of the current and
+    previous time steps in a secondary context and returns a Pyomo constraint.
+
+    The function ensures that the price reduction for a given time step is greater
+    than or equal to the price reduction in the prior time step, given specific
+    location and technology.
+
+    Args:
+        m: The model containing relevant Pyomo variables and parameters,
+            including `pricereduction_sec` and `y0`.
+        stf: The time step
+        location: The specific location for evaluating the price reduction.
+        tech: The technology type associated with the price reduction.
+
+    Returns:
+        Either a constraint enforcing the relationship between the current and
+        prior time step's price reductions, or skips the constraint for the first
+        time step.
+    """
     if stf == m.y0:
         # Skip for the first time step
         return pyomo.Constraint.Skip
@@ -2454,6 +2515,24 @@ def relation_pnew_to_pprior_sec(m, stf, location, tech):
 
 # equation 4
 def q_perstep_rule_sec(m, stf, location, tech):
+    """
+    Enforces a per-step rule constraint for secondary use capacities for a specific
+    location and technology in a given year.
+
+    The constraint ensures that the cumulative sum of capacities (LHS) up to the
+    specified year meets or exceeds the calculated requirement based on selected
+    steps (RHS). Debugging information is included to confirm the correctness of
+    indices and computation values.
+
+    Args:
+        m: The model object containing system parameters and constraints.
+        stf: The time step
+        location: The location under consideration for secondary use.
+        tech: The technology under consideration for secondary use.
+
+    Returns:
+        bool: True if the constraint is satisfied, False otherwise.
+    """
     lhs_cumulative_sum_sec = 0  # Reset LHS for each year
     rhs_value_sec = 0  # Reset RHS for each year
 
@@ -2488,6 +2567,23 @@ def q_perstep_rule_sec(m, stf, location, tech):
 
 # equation 5: z <= gamma * BD
 def upper_bound_z_eq_sec(m, stf, location, tech, nsteps_sec):
+    """
+    Evaluates whether the left-hand side of the equation for the secondary upper bound
+    constraint is less than or equal to the right-hand side. The equation verifies
+    constraints in a secondary process model using provided variables and model parameters.
+
+    Args:
+        m: The model object containing relevant decision variables and parameters.
+        stf: The time step
+        location: The geographical or spatial identifier for the context of the calculation.
+        tech: The technology type involved in the computation.
+        nsteps_sec: The step in the secondary process sequence for which the constraint
+            is being evaluated.
+
+    Returns:
+        bool: True if the left-hand side value is less than or equal to the right-hand side
+            value of the constraint, otherwise False.
+    """
     lhs_value = (
         m.BD_sec[stf, location, tech, nsteps_sec]
         * m.capacity_ext_eusecondary[stf, location, tech]
@@ -2504,6 +2600,26 @@ def upper_bound_z_eq_sec(m, stf, location, tech, nsteps_sec):
 
 # equation 6: z <= q1
 def upper_bound_z_q1_eq_sec(m, stf, location, tech, nsteps_sec):
+    """
+    Ensures that the left-hand side (LHS) value calculated using the model's boundary
+    data and capacity values for the specified secondary step does not exceed the
+    right-hand side (RHS) value representing the total possible capacity for the
+    configuration provided.
+
+    This function is typically used in optimization or constraint checks within
+    models and verifies compliance with an upper bound constraint.
+
+    Args:
+        m: The model object containing all relevant parameters and data structures.
+        stf: The time step
+        location: The identifier for the specific geographic or operational location.
+        tech: The identifier for the specific technology or equipment set.
+        nsteps_sec: The secondary step number or identifier in the process sequence.
+
+    Returns:
+        bool: True if the LHS value does not exceed the RHS value, indicating that
+        the upper bound constraint is satisfied; otherwise, False.
+    """
     lhs_value = (
         m.BD_sec[stf, location, tech, nsteps_sec]
         * m.capacity_ext_eusecondary[stf, location, tech]
@@ -2520,6 +2636,27 @@ def upper_bound_z_q1_eq_sec(m, stf, location, tech, nsteps_sec):
 
 # equation 7: z >= q1 - (1 - BD) * gamma
 def lower_bound_z_eq_sec(m, stf, location, tech, nsteps_sec):
+    """
+    Compares the lower bound equation for secondary capacity extension in a given
+    location, scenario, and time step. The function asserts whether the computed lower
+    bound inequality holds by comparing the left-hand side (LHS) against the right-hand
+    side (RHS) of the condition.
+
+    Args:
+        m: The model object containing system parameters, variables, and coefficients
+            necessary for the capacity computation.
+        stf: The time step
+        location: The string or numerical identifier for the geographical location where
+            the secondary capacity extension is being considered.
+        tech: The string or numerical identifier representing the technology for which
+            the secondary capacity extension is analyzed.
+        nsteps_sec: The integer denoting the specific time step in the sequence relevant
+            to the secondary capacity computation.
+
+    Returns:
+        bool: True if the lower bound inequality holds, otherwise False. The result
+            indicates whether the LHS of the inequality is greater than or equal to the RHS.
+    """
     lhs_value = (
         m.BD_sec[stf, location, tech, nsteps_sec]
         * m.capacity_ext_eusecondary[stf, location, tech]
@@ -2539,6 +2676,31 @@ def lower_bound_z_eq_sec(m, stf, location, tech, nsteps_sec):
 
 # equation 8: z >= 0 (Non-negativity)
 def non_negativity_z_eq_sec(m, stf, location, tech, nsteps_sec):
+    """
+    Ensures non-negativity of a secondary use-related variable for the specified
+    staff, location, technology, and step in the secondary stage.
+
+    This function calculates the left-hand side (LHS) value based on the product
+    of a decision variable and capacity, ensuring that the resulting value is
+    non-negative. It serves as a constraint validation function for specific
+    optimization or computational models.
+
+    Debug information, including the value of the LHS, is printed to assist in
+    debugging or analysis of the computation.
+
+    Args:
+        m: Model object containing the decision variables and data required
+            for computing the constraint.
+        stf: The time step
+        location: Identifier for the location or facility in the computation.
+        tech: Identifier for the specific technology being referenced.
+        nsteps_sec: Integer or identifier representing the step in the secondary
+            stage.
+
+    Returns:
+        bool: True if the LHS value is greater than or equal to zero, indicating
+        non-negativity; otherwise, False.
+    """
     lhs_value = (
         m.BD_sec[stf, location, tech, nsteps_sec]
         * m.capacity_ext_eusecondary[stf, location, tech]
@@ -2554,6 +2716,21 @@ def non_negativity_z_eq_sec(m, stf, location, tech, nsteps_sec):
 
 # Scrap 1: Determine EOL Scrap
 def decommissioned_capacity_rule(m, stf, location, tech):
+    """
+    Determines the decommissioned capacity for a given technology at a specific
+    location and time step. Adjusts calculations based on whether the technology is
+    solar PV or another type.
+
+    Args:
+        m: The model containing all relevant data and parameters.
+        stf: The time step for which the capacity rule is being applied.
+        location: The specific location of the technology being evaluated.
+        tech: The technology type (e.g., "solarPV", other).
+
+    Returns:
+        A rule that specifies the decommissioned capacity in the model, based
+        on the defined conditions and parameters.
+    """
     if tech == "solarPV":
         _exogenous = 7.5 * 1000
     else:
@@ -2573,6 +2750,22 @@ def decommissioned_capacity_rule(m, stf, location, tech):
 
 # Scrap 2
 def capacity_scrap_dec_rule(m, stf, location, tech):
+    """
+    Defines the scrap decision rule for capacity reduction within a specified technological,
+    staffing, and locational context. This function ensures that the scrap capacity value is
+    proportional to the decrement in capacity based on a scrap factor.
+
+    Args:
+        m: A model object that contains variables and parameters related to capacities, scrap
+           factors, and decisions.
+        stf: The staff category under consideration.
+        location: The geographical location under consideration.
+        tech: The technological category under consideration.
+
+    Returns:
+        The logical equality constraint ensuring that the scrap decision is proportional to
+        the decrement in capacity as determined by the scrap factor.
+    """
     return (
         m.capacity_scrap_dec[stf, location, tech]
         == m.f_scrap[location, tech] * m.capacity_dec[stf, location, tech]
@@ -2581,6 +2774,24 @@ def capacity_scrap_dec_rule(m, stf, location, tech):
 
 # Scrap 3
 def capacity_scrap_rec_rule(m, stf, location, tech):
+    """
+    Defines a rule to ensure the relationship between capacity of scrap recovery and
+    other related parameters and variables in the system.
+
+    This rule enforces that the capacity of scrap recovery for a specific staff unit
+    (stf), location, and technology equals the calculated value based on the mining
+    factor, recycling factor, and secondary external use capacity.
+
+    Args:
+        m: The model instance that holds parameters, variables, and constraints
+            for the optimization problem.
+        stf: Specific staff unit considered in the system.
+        location: Location where the operation takes place.
+        tech: Technology associated with the considered operation.
+
+    Returns:
+        A Boolean expression representing the equality constraint for the rule.
+    """
     return m.capacity_scrap_rec[stf, location, tech] == (
         (m.f_mining[location, tech] / m.f_recycling[location, tech])
         * m.capacity_ext_eusecondary[stf, location, tech]
@@ -2589,6 +2800,26 @@ def capacity_scrap_rec_rule(m, stf, location, tech):
 
 # Scrap 4
 def capacity_scrap_total_rule(m, stf, location, tech):
+    """
+    Determines whether the total scrap capacity constraint for a specified staff,
+    location, and technology should be applied or skipped.
+
+    This function establishes a relationship between total scrap capacity,
+    scrap capacity decommissioned, and scrap capacity recovered for a
+    specific combination of staff, location, and technology. If the specified
+    staff parameter (stf) matches the base year (m.y0), the function
+    returns a condition for the corresponding total scrap capacity rule.
+    Otherwise, it skips the application of this constraint.
+
+    Args:
+        m: A Pyomo model instance.
+        stf: Staff parameter to check against the model's base year.
+        location: Geographical or functional location identifier.
+        tech: Technological category or identifier.
+
+    Returns:
+        Constraint or a value indicating to skip application of the constraint.
+    """
     if stf == m.y0:
         return (
             m.capacity_scrap_total[stf, location, tech]
@@ -2601,6 +2832,22 @@ def capacity_scrap_total_rule(m, stf, location, tech):
 
 # Scrap 5
 def capacity_scrap_total_rule2(m, stf, location, tech):
+    """
+    Determines and enforces the total capacity scrap rule for the given parameters. This function is used
+    to skip the constraint for the initial stage (y0) or enforce the constraint for subsequent stages.
+    The constraint ensures that the capacity scrap total for a given staffing (stf), location, and
+    technology (tech) is updated based on the capacity scrap decrease and reception.
+
+    Args:
+        m: The Pyomo model object containing the variables and parameters for the constraint.
+        stf: An integer representing the staffing stage.
+        location: The spatial location corresponding to the current calculation.
+        tech: The type of technology associated with the model.
+
+    Returns:
+        pyomo.Constraint.Skip if the staffing stage equals the initial value (m.y0), else the
+        equality constraint for capacity scrap total is returned.
+    """
     if stf == m.y0:
         return pyomo.Constraint.Skip
     else:
@@ -2614,6 +2861,24 @@ def capacity_scrap_total_rule2(m, stf, location, tech):
 
 # Scrap 6
 def cost_scrap_rule(m, stf, location, tech):
+    """
+    Calculates the scrap cost rule based on the scrap recovery factor and the corresponding
+    recovery capacity for a particular scenario.
+
+    The function enforces that the scrap cost for a given staff, location, and technology
+    is equivalent to the product of the scrap recovery factor and the scrap recovery
+    capacity for the same criteria.
+
+    Args:
+        m: Model object containing relevant parameters and constraints.
+        stf: Staff identifier.
+        location: Location identifier.
+        tech: Technology identifier.
+
+    Returns:
+        A boolean expression that validates the relationship between
+        the scrap cost, scrap recovery factor, and recovery capacity.
+    """
     return (
         m.cost_scrap[stf, location, tech]
         == m.f_scrap_rec[stf, location, tech]
@@ -2623,6 +2888,26 @@ def cost_scrap_rule(m, stf, location, tech):
 
 # Scrap 7
 def scrap_total_decrease_rule(m, stf, location, tech):
+    """
+    Computes and enforces a rule that ensures the total scrap capacity decreases or
+    remains constant over sequential time steps.
+
+    This constraint is applied to maintain consistency of scrap capacity data across
+    different states or time frames. The function skips the constraint for the initial
+    state.
+
+    Args:
+        m: The Pyomo model object containing variables and constraints.
+        stf: The current state or time frame being evaluated.
+        location: The specific location for which the scrap capacity rule is applied.
+        tech: The specific technology associated with the scrap capacity.
+
+    Returns:
+        Constraint.Skip if the current state or time frame is the initial period,
+        otherwise returns an inequality constraint ensuring that the scrap capacity
+        at the current state or time does not exceed that of the previous state or
+        time.
+    """
     if stf == m.y0:
         return pyomo.Constraint.Skip
     else:
@@ -2634,6 +2919,28 @@ def scrap_total_decrease_rule(m, stf, location, tech):
 
 # Scrap 8
 def scrap_recycling_increase_rule(m, stf, location, tech):
+    """
+    Implements a Pyomo constraint rule to impose a limit on the increase in scrap recycling
+    capacity at a specific location and technology between consecutive simulation timeframes.
+    The rule ensures that the increase in capacity does not exceed a predefined fraction
+    (`f_increase`) of the capacity in the preceding simulation timeframe.
+
+    Args:
+        m: Pyomo model representing the optimization problem, containing all relevant
+            parameters, variables, and constraints.
+        stf: Simulation timeframe, an integer representing the specific period for which
+            the constraint is applied.
+        location: String or identifier representing the specific location where the constraint is evaluated.
+        tech: String or identifier representing the specific technology associated with
+            the recycling process being modeled.
+
+    Returns:
+        Pyomo.Constraint.Skip: Skips constraint evaluation if the current timeframe (`stf`)
+            is the initialization time (`y0`).
+        Expression: A constraint ensuring that the change in capacity for the specified
+            location and technology at the current timeframe conforms to the predefined
+            limit, compared to the preceding timeframe.
+    """
     if stf == m.y0:
         return pyomo.Constraint.Skip
     else:
