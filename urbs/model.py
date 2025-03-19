@@ -972,9 +972,9 @@ def create_model(
     m.cost_scrap_constraint = pyomo.Constraint(
         m.stf, m.location, m.tech, rule=cost_scrap_rule
     )
-    # m.scrap_total_decrease_constraint = pyomo.Constraint(
+    #m.scrap_total_decrease_constraint = pyomo.Constraint(
     #    m.stf, m.location, m.tech, rule=scrap_total_decrease_rule
-    # )
+    #)
     m.scrap_recycling_increase_constraint = pyomo.Constraint(
         m.stf, m.location, m.tech, rule=scrap_recycling_increase_rule
     )
@@ -2733,8 +2733,10 @@ def decommissioned_capacity_rule(m, stf, location, tech):
     """
     if tech == "solarPV":
         _exogenous = 7.5 * 1000
+    if tech == "windon":
+        _exogenous = 5 * 1000
     else:
-        _exogenous = 12.5 * 1000
+        _exogenous = 2 * 1000
 
     if stf - m.l[location, tech] >= m.y0:
         return (
@@ -2744,7 +2746,7 @@ def decommissioned_capacity_rule(m, stf, location, tech):
     else:
         return (
             m.capacity_dec[stf, location, tech]
-            == _exogenous + 0.15 * m.capacity_ext_new[stf, location, tech]
+            == _exogenous + 0.00000015 * m.capacity_ext_new[stf, location, tech] # TODO change back multiplier - currently problems with solar being to much decommissioned
         )
 
 
@@ -2908,13 +2910,17 @@ def scrap_total_decrease_rule(m, stf, location, tech):
         at the current state or time does not exceed that of the previous state or
         time.
     """
-    if stf == m.y0:
-        return pyomo.Constraint.Skip
+    if tech == "solarPV":
+        if stf <= 2030:
+            return pyomo.Constraint.Skip
+        else:
+            return (
+                m.capacity_scrap_total[stf, location, tech]
+                <= m.capacity_scrap_total[stf - 1, location, tech]
+            )
     else:
-        return (
-            m.capacity_scrap_total[stf, location, tech]
-            <= m.capacity_scrap_total[stf - 1, location, tech]
-        )
+        return pyomo.Constraint.Skip
+
 
 
 # Scrap 8

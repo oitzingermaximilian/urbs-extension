@@ -18,7 +18,19 @@ from openpyxl import load_workbook
 
 # base
 def scenario_base(data, data_urbsextensionv1):
-    # do nothing
+    if "process" in data:
+        pro = data["process"]
+        for stf in data["global_prop"].index.levels[0].tolist():
+            if stf == 2024:
+                pro.loc[(stf, "EU27", "Wind (onshore)"), "inst-cap"] = 0
+                pro.loc[(stf, "EU27", "Wind (offshore)"), "inst-cap"] = 0
+
+            else:
+                pro.loc[(stf, "EU27", "Wind (onshore)"), "cap-up"] = 0
+                pro.loc[(stf, "EU27", "Wind (offshore)"), "cap-up"] = 0
+
+    print(data["process"])
+
     return data, data_urbsextensionv1
 
 
