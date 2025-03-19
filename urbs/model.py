@@ -489,18 +489,22 @@ def create_model(
 
     ##########----------end EEM Addition-----------###############
     ##########----------    urbs-scrap  -----------###############
-    m.f_scrap = pyomo.Param(m.location, m.tech, initialize=1, doc="tons per MW")
-    m.f_mining = pyomo.Param(m.location, m.tech, initialize=1, doc="tons per MW")
+    m.f_scrap = pyomo.Param(m.location, m.tech, initialize=initialize_param("scrap", default_value=0), doc="tons per MW")
+    m.f_mining = pyomo.Param(m.location, m.tech, initialize=initialize_param("mining", default_value=0), doc="tons per MW")
     m.f_recycling = pyomo.Param(
-        m.location, m.tech, initialize=1, doc="recycling efficiency in %"
+        m.location, m.tech, initialize=initialize_param("recycling_efficiency", default_value=0), doc="recycling efficiency in %"
     )
     m.f_scrap_rec = pyomo.Param(
-        m.location, m.tech, initialize=1, doc="cost for recycling in EUR/ton"
+        m.stf, m.location, m.tech, initialize=data_urbsextensionv1["recyclingcost_dict"], doc="cost for recycling in EUR/ton"
     )
     m.f_increase = pyomo.Param(
-        m.location, m.tech, initialize=1, doc="Fraction of increase in production"
+        m.location, m.tech, initialize=initialize_param("IR_recycling", default_value=0), doc="Fraction of increase in production"
     )
-    m.capacity_dec_start = pyomo.Param()
+    m.capacity_dec_start = pyomo.Param(
+        m.location, m.tech, initialize=initialize_param("Initial_decommisions", default_value=0),
+        doc="initial decommisions"
+    )
+
 
     ##########----------end urbs-scrap  -----------###############
     # tuple sets
@@ -930,6 +934,7 @@ def create_model(
     )
 
     # Scrap
+
     m.decommissioned_capacity_constraint = pyomo.Constraint(
         m.stf, m.location, m.tech, rule=decommissioned_capacity_rule
     )
@@ -948,9 +953,9 @@ def create_model(
     m.cost_scrap_constraint = pyomo.Constraint(
         m.stf, m.location, m.tech, rule=cost_scrap_rule
     )
-    m.scrap_total_decrease_constraint = pyomo.Constraint(
-        m.stf, m.location, m.tech, rule=scrap_total_decrease_rule
-    )
+    #m.scrap_total_decrease_constraint = pyomo.Constraint(
+    #    m.stf, m.location, m.tech, rule=scrap_total_decrease_rule
+    #)
     m.scrap_recycling_increase_constraint = pyomo.Constraint(
         m.stf, m.location, m.tech, rule=scrap_recycling_increase_rule
     )
@@ -2539,7 +2544,7 @@ def decommissioned_capacity_rule(m, stf, location, tech):
     else:
         return (
             m.capacity_dec[stf, location, tech]
-            == m.capacity_dec_start[stf, location, tech]
+            == m.capacity_dec_start[location, tech]
         )
 
 
@@ -2595,20 +2600,24 @@ def cost_scrap_rule(m, stf, location, tech):
 
 # Scrap 7
 def scrap_total_decrease_rule(m, stf, location, tech):
-    if stf >= m.y0:
+    if stf == m.y0:
+        return pyomo.Constraint.Skip
+    else:
         return (
             m.capacity_scrap_total[stf, location, tech]
             <= m.capacity_scrap_total[stf - 1, location, tech]
         )
-    else:
-        return pyomo.Constraint.Skip
+
 
 
 # Scrap 8
 def scrap_recycling_increase_rule(m, stf, location, tech):
-    lhs = (
-        m.capacity_scrap_rec[stf, location, tech]
-        - m.capacity_scrap_rec[stf - 1, location, tech]
-    )
-    rhs = m.f_increase[location, tech] * m.capacity_scrap_rec[stf - 1, location, tech]
-    return lhs <= rhs
+    if stf == m.y0:
+        return pyomo.Constraint.Skip
+    else:
+        lhs = (
+            m.capacity_scrap_rec[stf, location, tech]
+            - m.capacity_scrap_rec[stf - 1, location, tech]
+            )
+        rhs = m.f_increase[location, tech] * m.capacity_scrap_rec[stf - 1, location, tech]
+        return lhs <= rhs
