@@ -488,7 +488,16 @@ def create_model(
     m.gamma_sec = pyomo.Param(initialize=1e10)
 
     ##########----------end EEM Addition-----------###############
+    ##########----------    urbs-scrap  -----------###############
+    m.f_scrap = pyo.Param(m.location, m.tech, initialize=1, doc="tons per MW")
+    m.f_mining = pyo.Param(m.location, m.tech, initialize=1, doc="tons per MW")
+    m.f_recycling = pyo.Param(m.location, m.tech, initialize=1, doc="recycling efficiency in %")
+    m.f_scrap_rec = pyo.Param(m.location, m.tech, initialize=1, doc="cost for recycling in EUR/ton")
+    m.f_increase = pyo.Param(m.location, m.tech, initialize=1, doc="Fraction of increase in production")
 
+
+
+    ##########----------end urbs-scrap  -----------###############
     # tuple sets
     m.sit_tuples = pyomo.Set(
         within=m.stf * m.sit,
@@ -752,7 +761,13 @@ def create_model(
     m.costs_EU_secondary = pyomo.Var(
         m.stf, m.location, m.tech, within=pyomo.NonNegativeReals
     )
-
+    ##########----------    urbs-scrap  -----------###############
+    m.capacity_dec = pyomo.Var(m.stf, m.location, m.tech, domain=pyomo.NonNegativeReals)
+    m.capacity_scrap_dec = pyomo.Var(m.stf, m.location, m.tech, domain=pyomo.NonNegativeReals)
+    m.capacity_scrap_rec = pyomo.Var(m.stf, m.location, m.tech, domain=pyomo.NonNegativeReals)
+    m.capacity_scrap_total = pyomo.Var(m.stf, m.location, m.tech, domain=pyomo.NonNegativeReals)
+    m.cost_scrap = pyomo.Var(m.stf, m.location, m.tech, domain=pyomo.NonNegativeReals)
+    ##########----------end urbs-scrap  -----------###############
     if m.mode["tra"]:
         if m.mode["dpf"]:
             m = add_transmission_dc(m)
@@ -1119,6 +1134,7 @@ def res_vertex_rule(m, tm, stf, sit, com, com_type):
         for tech in m.tech:
             if (tm, stf, sit, tech) in m.balance_ext:
                 power_surplus += m.balance_ext[tm, stf, sit, tech]
+
     print(power_surplus)
     # if com is a stock commodity, the commodity source term e_co_stock
     # can supply a possibly negative power_surplus
