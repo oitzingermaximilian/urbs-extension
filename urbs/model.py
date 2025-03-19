@@ -929,6 +929,33 @@ def create_model(
         m.stf, m.location, m.tech, m.nsteps_sec, rule=non_negativity_z_eq_sec
     )
 
+    # Scrap
+    m.decommissioned_capacity_constraint = pyomo.Constraint(
+        m.stf, m.location, m.tech, rule=decommissioned_capacity_rule
+    )
+    m.capacity_scrap_dec_constraint = pyomo.Constraint(
+        m.stf, m.location, m.tech, rule=capacity_scrap_dec_rule
+    )
+    m.apacity_scrap_rec_constraint = pyomo.Constraint(
+        m.stf, m.location, m.tech, rule=capacity_scrap_rec_rule
+    )
+    m.capacity_scrap_total_constraint = pyomo.Constraint(
+        m.stf, m.location, m.tech, rule=capacity_scrap_total_rule
+    )
+    m.capacity_scrap_total2_constraint = pyomo.Constraint(
+        m.stf, m.location, m.tech, rule=capacity_scrap_total_rule2
+    )
+    m.cost_scrap_constraint = pyomo.Constraint(
+        m.stf, m.location, m.tech, rule=cost_scrap_rule
+    )
+    m.scrap_total_decrease_constraint = pyomo.Constraint(
+        m.stf, m.location, m.tech, rule=scrap_total_decrease_rule
+    )
+    m.scrap_recycling_increase_constraint = pyomo.Constraint(
+        m.stf, m.location, m.tech, rule=scrap_recycling_increase_rule
+    )
+
+
     # commodity constraints default
     m.res_vertex = pyomo.Constraint(
         m.tm,
@@ -2545,7 +2572,7 @@ def capacity_scrap_total_rule(m, stf, location, tech):
 
 
 # Scrap 5
-def capacity_scrap_total_rule(m, stf, location, tech):
+def capacity_scrap_total_rule2(m, stf, location, tech):
     if stf == m.y0:
         return pyomo.Constraint.Skip
     else:
