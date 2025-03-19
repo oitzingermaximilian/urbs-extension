@@ -2554,14 +2554,20 @@ def non_negativity_z_eq_sec(m, stf, location, tech, nsteps_sec):
 
 # Scrap 1: Determine EOL Scrap
 def decommissioned_capacity_rule(m, stf, location, tech):
-    if m.y0 <= stf - m.l[location, tech]:
+    if tech == "solarPV":
+        _exogenous = 7.5 * 1000
+    else:
+        _exogenous = 12.5 * 1000
+
+    if stf - m.l[location, tech] >= m.y0:
         return (
             m.capacity_dec[stf, location, tech]
             == m.capacity_ext_new[stf - m.l[location, tech], location, tech]
         )
     else:
         return (
-            m.capacity_dec[stf, location, tech] == m.capacity_dec_start[location, tech]
+            m.capacity_dec[stf, location, tech]
+            == _exogenous + 0.15 * m.capacity_ext_new[stf, location, tech]
         )
 
 
