@@ -134,7 +134,7 @@ class AntiDumpingMeasuresRule(AbstractConstraint):
 class CapacityExtNewLimitRule(AbstractConstraint):
     def apply_rule(self, m, stf, location, tech):
         capacity_value = m.capacity_ext_new[stf, location, tech]
-        ext_new_value = m.Q_ext_new[stf, location, tech]
+        ext_new_value = m.Q_ext_new[stf, location, tech] + m.capacity_dec[stf, location, tech]
 
         print(
             f"Debug: STF = {stf}, Location = {location}, Tech = {tech}, Capacity Solar New = {capacity_value}, max installable Capacity = {ext_new_value}"
