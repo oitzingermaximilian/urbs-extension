@@ -7,6 +7,8 @@ from urbs.extension.scrap import apply_scrap_constraints
 from urbs.extension.lr_remanufacturing import apply_rm_constraints
 from urbs.extension.lr_manufacturing import apply_m_constraints
 from urbs.extension.stockpile import apply_stockpiling_constraints
+from urbs.extension.balance_converter import apply_balance_constraints
+from urbs.extension.costs import apply_costs_constraints
 
 
 def create_model(
@@ -831,45 +833,6 @@ def create_model(
     # Equation declarations
     # equation bodies are defined in separate functions, referred to here by
     # their name in the "rule" keyword.
-
-    m.cost_constraint_new = pyomo.Constraint(m.cost_type_new, rule=def_costs_new)
-    m.max_intostock_constraint = pyomo.Constraint(
-        m.stf, m.location, m.tech, rule=max_intostock_rule
-    )
-
-    m.balance_import_constraint = pyomo.Constraint(
-        m.timesteps_ext, m.stf, m.location, m.tech, rule=convert_capacity_1_rule
-    )
-    m.balance_balance_outofstock_constraint = pyomo.Constraint(
-        m.timesteps_ext, m.stf, m.location, m.tech, rule=convert_capacity_2_rule
-    )
-    m.balance_EU_primary_constraint = pyomo.Constraint(
-        m.timesteps_ext, m.stf, m.location, m.tech, rule=convert_capacity_3_rule
-    )
-    m.balance_EU_secondary_constraint = pyomo.Constraint(
-        m.timesteps_ext, m.stf, m.location, m.tech, rule=convert_capacity_4_rule
-    )
-    m.balance_ext_constraint = pyomo.Constraint(
-        m.timesteps_ext,
-        m.stf,
-        m.location,
-        m.tech,
-        rule=convert_totalcapacity_to_balance,
-    )
-
-    m.yearly_storagecost_constraint = pyomo.Constraint(
-        m.stf, m.location, m.tech, rule=calculate_yearly_storagecost
-    )
-    m.yearly_importcost_constraint = pyomo.Constraint(
-        m.stf, m.location, m.tech, rule=calculate_yearly_importcost
-    )
-    m.yearly_eumanufacturing_constraint = pyomo.Constraint(
-        m.stf, m.location, m.tech, rule=calculate_yearly_EU_primary
-    )
-    m.yearly_eurecycling_constraint = pyomo.Constraint(
-        m.stf, m.location, m.tech, rule=calculate_yearly_EU_secondary
-    )
-
     # Constraints for Scenarios ToDo ENABLE IF NEEDED
     # m.net_zero_industrialactbenchmark_a = pyomo.Constraint(m.stf, m.location, m.tech, rule=net_zero_industrialactbenchmark_rule_a)
     # m.net_zero_industrialactbenchmark_b = pyomo.Constraint(m.stf, rule=net_zero_industrialactbenchmark_rule_b)
@@ -893,6 +856,10 @@ def create_model(
     apply_scrap_constraints(m)
 
     # apply_m_constraints(m)
+
+    apply_balance_constraints(m)
+
+    apply_costs_constraints(m)
 
     ########################################################################################################################
     # commodity constraints default
@@ -1644,207 +1611,6 @@ def co2_rule(m):
 ##########################################################################################
 
 
-# calculate total urbs costs
-def def_costs_new(m, cost_type_new):
-    if cost_type_new == "Importcost":
-        # Calculating total import cost across all time steps, locations, and technologies
-        total_import_cost = sum(
-            (
-                m.IMPORTCOST[stf, site, tech]
-                * (
-                    m.capacity_ext_imported[stf, site, tech]
-                    + m.capacity_ext_stock_imported[stf, site, tech]
-                )
-            )
-            + (
-                m.capacity_ext_stock_imported[stf, site, tech]
-                * m.logisticcost[site, tech]
-            )
-            + m.anti_dumping_measures[stf, site, tech]
-            for stf in m.stf
-            for site in m.location
-            for tech in m.tech
-        )
-
-        print("Calculating Import Cost Total:")
-        print(f"Total Import Cost = {total_import_cost}")
-        return m.costs_new[cost_type_new] == total_import_cost
-
-    elif cost_type_new == "Storagecost":
-        # Calculating total storage cost across all time steps and locations/technologies if needed
-        total_storage_cost = sum(
-            m.STORAGECOST[site, tech] * m.capacity_ext_stock[stf, site, tech]
-            for stf in m.stf
-            for site in m.location
-            for tech in m.tech
-        )
-
-        print("Calculating Storage Cost Total:")
-        print(f"Total Storage Cost = {total_storage_cost}")
-        return m.costs_new[cost_type_new] == total_storage_cost
-
-    elif cost_type_new == "Eu Cost Primary":
-        # Calculating total EU primary cost across all time steps
-        total_eu_cost_primary = sum(
-            m.EU_primary_costs[stf, site, tech]
-            * m.capacity_ext_euprimary[stf, site, tech]
-            for stf in m.stf
-            for site in m.location
-            for tech in m.tech
-        )
-
-        print("Calculating EU Primary Cost Total:")
-        print(f"Total EU Primary Cost = {total_eu_cost_primary}")
-        return m.costs_new[cost_type_new] == total_eu_cost_primary
-
-    elif cost_type_new == "Eu Cost Secondary":
-        # Calculating total EU secondary cost across all time steps
-        total_eu_cost_secondary = sum(
-            (
-                (
-                    (
-                        m.EU_secondary_costs[stf, site, tech]
-                        - m.pricereduction_sec[stf, site, tech]
-                    )
-                    * m.capacity_ext_eusecondary[stf, site, tech]
-                )
-                + m.cost_scrap[stf, site, tech]
-                for stf in m.stf
-                for site in m.location
-                for tech in m.tech
-            )
-        )
-
-        print("Calculating EU Secondary Cost Total:")
-        print(f"Total EU Secondary Cost = {total_eu_cost_secondary}")
-        return m.costs_new[cost_type_new] == total_eu_cost_secondary
-
-    else:
-        raise NotImplementedError("Unknown cost type.")
-
-
-# Convert capacity solar MW to Balance MWh
-
-
-def convert_totalcapacity_to_balance(m, timesteps_ext, stf, location, tech):
-    balance_value = (
-        m.capacity_ext[stf, location, tech]
-        * m.lf_solar[timesteps_ext, stf, location, tech]
-        * m.hours[timesteps_ext]
-    )
-    print(
-        f"Debug: time = {timesteps_ext}, STF = {stf}, Location = {location}, Tech = {tech}"
-    )
-    print(f"Total Capacity to Balance (Solar) = {balance_value}")
-    return m.balance_ext[timesteps_ext, stf, location, tech] == balance_value
-
-
-def convert_capacity_1_rule(m, timesteps_ext, stf, location, tech):
-    balance_value = (
-        m.capacity_ext_imported[stf, location, tech]  # Capacity in MW
-        * m.lf_solar[timesteps_ext, stf, location, tech]  # Load factor
-        * m.hours[timesteps_ext]  # Duration of the timestep in hours
-    )
-    print(
-        f"Debug:time = {timesteps_ext}, STF = {stf}, Location = {location}, Tech = {tech}"
-    )
-    print(f"Total Balance (Imported Solar) = {balance_value}")
-    return m.balance_import_ext[timesteps_ext, stf, location, tech] == balance_value
-
-
-def convert_capacity_2_rule(m, timesteps_ext, stf, location, tech):
-    balance_value = (
-        m.capacity_ext_stockout[stf, location, tech]
-        * m.lf_solar[timesteps_ext, stf, location, tech]
-        * m.hours[timesteps_ext]
-    )
-    print(
-        f"Debug:time = {timesteps_ext}, STF = {stf}, Location = {location}, Tech = {tech}"
-    )
-    print(f"Total Balance (Stockout Solar) = {balance_value}")
-    return m.balance_outofstock_ext[timesteps_ext, stf, location, tech] == balance_value
-
-
-def convert_capacity_3_rule(m, timesteps_ext, stf, location, tech):
-    balance_value = (
-        m.capacity_ext_euprimary[stf, location, tech]
-        * m.lf_solar[timesteps_ext, stf, location, tech]
-        * m.hours[timesteps_ext]
-    )
-    print(
-        f"Debug:time = {timesteps_ext}, STF = {stf}, Location = {location}, Tech = {tech}"
-    )
-    print(f"Total Balance (EU Primary Solar) = {balance_value}")
-    return m.balance_EU_primary_ext[timesteps_ext, stf, location, tech] == balance_value
-
-
-def convert_capacity_4_rule(m, timesteps_ext, stf, location, tech):
-    balance_value = (
-        m.capacity_ext_eusecondary[stf, location, tech]
-        * m.lf_solar[timesteps_ext, stf, location, tech]
-        * m.hours[timesteps_ext]
-    )
-    print(
-        f"Debug:time = {timesteps_ext}, STF = {stf}, Location = {location}, Tech = {tech}"
-    )
-    print(f"Total Balance (EU Secondary Solar) = {balance_value}")
-    return (
-        m.balance_EU_secondary_ext[timesteps_ext, stf, location, tech] == balance_value
-    )
-
-
-# Calculate yearly Solar Costs only for excel output
-def calculate_yearly_importcost(m, stf, location, tech):
-    import_cost_value = (
-        m.IMPORTCOST[stf, location, tech]
-        * (
-            m.capacity_ext_imported[stf, location, tech]
-            + m.capacity_ext_stock_imported[stf, location, tech]
-        )
-        + (
-            m.capacity_ext_stock_imported[stf, location, tech]
-            * m.logisticcost[location, tech]
-        )
-        + m.anti_dumping_measures[stf, location, tech]
-    )
-    print(f"Debug: STF = {stf}, Location = {location}, Tech = {tech}")
-    print(f"Total Yearly Import Cost = {import_cost_value}")
-    return m.costs_ext_import[stf, location, tech] == import_cost_value
-
-
-def calculate_yearly_storagecost(m, stf, location, tech):
-    storage_cost_value = (
-        m.STORAGECOST[location, tech] * m.capacity_ext_stock[stf, location, tech]
-    )
-    print(f"Debug: STF = {stf}, Location = {location}, Tech = {tech}")
-    print(f"Total Yearly Storage Cost = {storage_cost_value}")
-    return m.costs_ext_storage[stf, location, tech] == storage_cost_value
-
-
-def calculate_yearly_EU_primary(m, stf, location, tech):
-    eu_primary_cost_value = (
-        m.EU_primary_costs[stf, location, tech]
-        * m.capacity_ext_euprimary[stf, location, tech]
-    )
-    print(f"Debug: STF = {stf}, Location = {location}, Tech = {tech}")
-    print(f"Total Yearly EU Primary Cost = {eu_primary_cost_value}")
-    return m.costs_EU_primary[stf, location, tech] == eu_primary_cost_value
-
-
-def calculate_yearly_EU_secondary(m, stf, location, tech):
-    eu_secondary_cost_value = (
-        m.EU_secondary_costs[stf, location, tech]
-        - m.pricereduction_sec[stf, location, tech]
-    ) * m.capacity_ext_eusecondary[stf, location, tech]
-    +m.cost_scrap[stf, location, tech]
-    print(f"Debug: STF = {stf}, Location = {location}, Tech = {tech}")
-    print(f"Total Yearly EU Secondary Cost = {eu_secondary_cost_value}")
-    return m.costs_EU_secondary[stf, location, tech] == eu_secondary_cost_value
-
-
-# Addition made on 28th November:
-
-
 def net_zero_industrialactbenchmark_rule_a(m, stf, location, tech):
     lhs = (
         m.capacity_ext_euprimary[stf, location, tech]
@@ -1911,19 +1677,6 @@ def best_estimate_TYNDP2050_rule(m, stf, location, tech):
     )
 
     return lhs <= 1753785
-
-
-def max_intostock_rule(m, stf, location, tech):
-    # Calculate the left-hand side (LHS) and right-hand side (RHS)
-    lhs = m.capacity_ext_stock_imported[stf, location, tech]
-    rhs = 0.5 * m.capacity_ext_imported[stf, location, tech]
-
-    # Debugging: Print the LHS and RHS values
-    print(
-        f"Debug: STF = {stf}, Location = {location}, Tech = {tech}, LHS = {lhs}, RHS = {rhs}"
-    )
-
-    return lhs <= rhs
 
 
 def minimum_stock_level_rule(m, stf, location, tech):

@@ -255,6 +255,20 @@ class ConstraintEUSecondaryToSecondaryRule(AbstractConstraint):
             return lhs >= rhs
 
 
+class ConstraintMaxIntoStockRule(AbstractConstraint):
+    def apply_rule(self, m, stf, location, tech):
+        # Calculate the left-hand side (LHS) and right-hand side (RHS)
+        lhs = m.capacity_ext_stock_imported[stf, location, tech]
+        rhs = 0.5 * m.capacity_ext_imported[stf, location, tech]
+
+        # Debugging: Print the LHS and RHS values
+        print(
+            f"Debug: STF = {stf}, Location = {location}, Tech = {tech}, LHS = {lhs}, RHS = {rhs}"
+        )
+
+        return lhs <= rhs
+
+
 def apply_stockpiling_constraints(m):
     constraints = [
         CapacityExtGrowthRule(),
@@ -271,6 +285,7 @@ def apply_stockpiling_constraints(m):
         Constraint2EUSecondaryToTotalRule(),
         ConstraintEUPrimaryToTotalRule(),
         ConstraintEUSecondaryToSecondaryRule(),
+        ConstraintMaxIntoStockRule(),
     ]
 
     for i, constraint in enumerate(constraints):
