@@ -6,6 +6,7 @@ from .input import *
 from urbs.extension.scrap import apply_scrap_constraints
 from urbs.extension.lr_remanufacturing import apply_rm_constraints
 from urbs.extension.lr_manufacturing import apply_m_constraints
+from urbs.extension.stockpile import apply_stockpiling_constraints
 
 
 def create_model(
@@ -185,6 +186,7 @@ def create_model(
     m.l = pyomo.Param(
         m.location, m.tech, initialize=initialize_param("l", default_value=0)
     )
+
     m.Installed_Capacity_Q_s = pyomo.Param(
         m.location,
         m.tech,
@@ -830,47 +832,6 @@ def create_model(
     # equation bodies are defined in separate functions, referred to here by
     # their name in the "rule" keyword.
 
-    ##################################
-    # Constraints used for urbs_ext  #
-    ##################################
-
-    m.capacity_ext_growth_constraint = pyomo.Constraint(
-        m.stf, m.location, m.tech, rule=capacity_ext_growth_rule
-    )
-    m.initial_capacity_constraint = pyomo.Constraint(
-        m.stf, m.location, m.tech, rule=initial_capacity_rule
-    )
-    m.capacity_ext_new_constraint = pyomo.Constraint(
-        m.stf, m.location, m.tech, rule=capacity_ext_new_rule
-    )
-    m.capacity_ext_stock_constraint = pyomo.Constraint(
-        m.stf, m.location, m.tech, rule=capacity_ext_stock_rule
-    )
-    m.capacity_ext_stock_initial_constraint = pyomo.Constraint(
-        m.stf, m.location, m.tech, rule=capacity_ext_stock_initial_rule
-    )
-    m.anti_dumping_measures_constraint = pyomo.Constraint(
-        m.stf, m.location, m.tech, rule=anti_dumping_measures_rule
-    )
-    m.capacity_ext_new_limit_constraint = pyomo.Constraint(
-        m.stf, m.location, m.tech, rule=capacity_ext_new_limit_rule
-    )
-    m.timedelay_EU_primary_production_constraint = pyomo.Constraint(
-        m.stf, m.location, m.tech, rule=timedelay_EU_primary_production_rule
-    )
-    m.timedelay_EU_secondary_production_constraint = pyomo.Constraint(
-        m.stf, m.location, m.tech, rule=timedelay_EU_secondary_production_rule
-    )
-    # m.constraint_EU_secondary1_to_total_constraint = pyomo.Constraint(m.stf,rule=constraint1_EU_secondary_to_total_rule)
-    m.constraint_EU_secondary2_to_total_constraint = pyomo.Constraint(
-        m.stf, m.location, m.tech, rule=constraint2_EU_secondary_to_total_rule
-    )
-    m.constraint_EU_primary_to_total_constraint = pyomo.Constraint(
-        m.stf, m.location, m.tech, rule=constraint_EU_primary_to_total_rule
-    )
-    m.constraint_EU_secondary_to_secondary_constraint = pyomo.Constraint(
-        m.stf, m.location, m.tech, rule=constraint_EU_secondary_to_secondary_rule
-    )
     m.cost_constraint_new = pyomo.Constraint(m.cost_type_new, rule=def_costs_new)
     m.max_intostock_constraint = pyomo.Constraint(
         m.stf, m.location, m.tech, rule=max_intostock_rule
@@ -910,7 +871,6 @@ def create_model(
     )
 
     # Constraints for Scenarios ToDo ENABLE IF NEEDED
-    # m.stock_turnover_constraint = pyomo.Constraint(m.stf, m.location, m.tech, rule=stock_turnover_rule)
     # m.net_zero_industrialactbenchmark_a = pyomo.Constraint(m.stf, m.location, m.tech, rule=net_zero_industrialactbenchmark_rule_a)
     # m.net_zero_industrialactbenchmark_b = pyomo.Constraint(m.stf, rule=net_zero_industrialactbenchmark_rule_b)
     # m.best_estimate_TYNDP2030 = pyomo.Constraint(m.stf, rule=best_estimate_TYNDP2030_rule)
@@ -918,22 +878,23 @@ def create_model(
     # m.best_estimate_TYNDP2050 = pyomo.Constraint(m.stf, rule=best_estimate_TYNDP2050_rule)
     # m.minimum_stock_level = pyomo.Constraint(m.stf, rule=minimum_stock_level_rule)
 
-    # constraints dynamic feedback loop
-    # Eu_pri
-    # m.costsavings_constraint_pri = pyomo.Constraint(m.stf, rule=costsavings_rule_pri)
-    # m.BD_limitation_constraint_pri = pyomo.Constraint(m.stf, rule=BD_limitation_rule_pri)
-    # m.relation_pnew_to_pprior_constraint_pri = pyomo.Constraint(m.stf, rule=relation_pnew_to_pprior_pri)
-    # m.q_perstep_constraint_pri = pyomo.Constraint(m.stf,rule=q_perstep_rule_pri)
-    # m.upper_bound_z_constraint_pri = pyomo.Constraint(m.stf, m.nsteps_pri, rule=upper_bound_z_eq_pri)
-    # m.upper_bound_z_q1_constraint_pri = pyomo.Constraint(m.stf, m.nsteps_pri, rule=upper_bound_z_q1_eq_pri)
-    # m.lower_bound_z_constraint_pri = pyomo.Constraint(m.stf, m.nsteps_pri, rule=lower_bound_z_eq_pri)
-    # m.non_negativity_z_constraint_pri = pyomo.Constraint(m.stf, m.nsteps_pri, rule=non_negativity_z_eq_pri)
+    ########################################################################################################################
+    """
+    This Section is used to read in certain packages and features coded to modify the basic urbs model. 
+    It links the basic urbs model with our own Constraints and passes these Constraints to the model "m"
+    """
 
-    # Scrap
-    apply_scrap_constraints(m)
-    apply_rm_constraints(m)
+    apply_stockpiling_constraints(m)
+
     # apply_m_constraints(m)
 
+    apply_rm_constraints(m)
+
+    apply_scrap_constraints(m)
+
+    # apply_m_constraints(m)
+
+    ########################################################################################################################
     # commodity constraints default
     m.res_vertex = pyomo.Constraint(
         m.tm,
@@ -1881,307 +1842,6 @@ def calculate_yearly_EU_secondary(m, stf, location, tech):
     return m.costs_EU_secondary[stf, location, tech] == eu_secondary_cost_value
 
 
-# Constraint 1: capacity_ext_y = capacity_ext_y-1 + capacity_ext_new_y for all y > y0
-def capacity_ext_growth_rule(m, stf, location, tech):
-    if stf == m.y0:
-        return pyomo.Constraint.Skip
-    else:
-        capacity_extensionpackage = (
-            m.capacity_ext[stf, location, tech]
-            == m.capacity_ext[stf - 1, location, tech]
-            + m.capacity_ext_new[stf, location, tech]
-            - m.capacity_dec[stf, location, tech]
-        )
-        print(f"Capacity extension package = {capacity_extensionpackage}")
-        return capacity_extensionpackage
-
-
-def initial_capacity_rule(m, stf, location, tech):
-    if stf == m.y0:
-        capacity_eq1 = (
-            m.capacity_ext[stf, location, tech]
-            == m.Installed_Capacity_Q_s[location, tech]
-            + m.capacity_ext_new[stf, location, tech]
-            - m.capacity_dec[stf, location, tech]
-        )
-        print(
-            f"Initial Capacity for {tech} at {location} in year {stf}: {m.capacity_ext[stf, location, tech]} = "
-            f"{m.Installed_Capacity_Q_s[location, tech]} + {m.capacity_ext_new[stf, location, tech]}"
-        )
-        return capacity_eq1
-    else:
-        return pyomo.Constraint.Skip
-
-
-# Constraint 3: capacity_solar_new_y = sum of capacities for all y
-
-
-def capacity_ext_new_rule(m, stf, location, tech):
-    capacity_eq2 = m.capacity_ext_new[stf, location, tech] == (
-        m.capacity_ext_imported[stf, location, tech]
-        + m.capacity_ext_stockout[stf, location, tech]
-        + m.capacity_ext_euprimary[stf, location, tech]
-        + m.capacity_ext_eusecondary[stf, location, tech]
-    )
-    print(
-        f"Capacity Extension New for {tech} at {location} in year {stf}: "
-        f"{m.capacity_ext_new[stf, location, tech]} = "
-        f"{m.capacity_ext_imported[stf, location, tech]} + "
-        f"{m.capacity_ext_stockout[stf, location, tech]} + "
-        f"{m.capacity_ext_euprimary[stf, location, tech]} + "
-        f"{m.capacity_ext_eusecondary[stf, location, tech]}"
-    )
-    return capacity_eq2
-
-
-# Constraint 4:
-def capacity_ext_stock_rule(m, stf, location, tech):
-    if stf == m.y0:
-        return pyomo.Constraint.Skip
-    else:
-        capacity_eq3 = m.capacity_ext_stock[stf, location, tech] == (
-            m.capacity_ext_stock[stf - 1, location, tech]
-            + m.capacity_ext_stock_imported[stf, location, tech]
-            - m.capacity_ext_stockout[stf, location, tech]
-        )
-        print(
-            f"Capacity Extension Stock for {tech} at {location} in year {stf}: "
-            f"{m.capacity_ext_stock[stf, location, tech]} = "
-            f"{m.capacity_ext_stock[stf - 1, location, tech]} + "
-            f"{m.capacity_ext_stock_imported[stf, location, tech]} - "
-            f"{m.capacity_ext_stockout[stf, location, tech]}"
-        )
-        return capacity_eq3
-
-
-# Constraint 5:
-def capacity_ext_stock_initial_rule(m, stf, location, tech):
-    if stf == m.y0:
-        capacity_eq4 = m.capacity_ext_stock[stf, location, tech] == (
-            m.Existing_Stock_Q_stock[location, tech]
-            + m.capacity_ext_stock_imported[stf, location, tech]
-            - m.capacity_ext_stockout[stf, location, tech]
-        )
-        print(
-            f"Capacity Extension Stock Initial for {tech} at {location} in year {stf}: "
-            f"{m.capacity_ext_stock[stf, location, tech]} = "
-            f"{m.Existing_Stock_Q_stock[location, tech]} + "
-            f"{m.capacity_ext_stock_imported[stf, location, tech]} - "
-            f"{m.capacity_ext_stockout[stf, location, tech]}"
-        )
-        return capacity_eq4
-    else:
-        return pyomo.Constraint.Skip
-
-
-# Constraint 6:
-# def importcost_solar_rule(m, stf):
-#    return m.importcost[stf] == m.IMPORTCOST[stf] * (m.capacity_solar_imported[stf]+ m.capacity_solar_stock_imported[stf])+ (m.capacity_solar_stock_imported[stf]*m.logisticcost) + m.anti_dumping_measures[stf]
-
-# Constraint 7:
-# def storagecost_solar_rule(m, stf):
-#    return m.storagecost[stf] == m.STORAGECOST * m.capacity_solar_stock[stf]
-
-# Constraint 8:
-# def manufacturingcost_primary_solar_rule(m, stf):
-#    return  m.costs_eu_primary[stf] == (m.EU_primary_costs[stf]-m.pricereduction_pri[stf]) * m.capacity_solar_euprimary[stf]
-
-# Constraint 9:
-# def manufacturingcost_secondary_solar_rule(m, stf):
-#    return  m.costs_eu_secondary[stf] == (m.EU_secondary_costs[stf]-m.pricereduction_pri[stf]) * m.capacity_solar_eusecondary[stf]
-
-
-# Constraint 10&11: stock turnover #ToDo enable constraint to check math
-def stock_turnover_rule(m, stf, location, tech):
-    valid_years = [2025, 2030, 2035, 2040, 2045]
-
-    # Ensure the constraint is only applied to valid years
-    if stf in valid_years:
-        # Left-hand side: sum of stock out for each location and tech
-        lhs = sum(
-            m.capacity_ext_stockout[j, location, tech]
-            for j in range(stf, stf + m.n)
-            if j in m.capacity_ext_stockout
-        )
-        print(f"LHS for {tech} at {location} in year {stf}: {lhs}")
-
-        # Right-hand side: sum of stock for each location and tech with scaling factor FT * (1/n)
-        rhs = (
-            m.FT
-            * (1 / m.n)
-            * sum(
-                m.capacity_ext_stock[j, location, tech]
-                for j in range(stf, stf + m.n)
-                if j in m.capacity_ext_stock
-            )
-        )
-        print(f"RHS for {tech} at {location} in year {stf}: {rhs}")
-
-        # Return the constraint for turnover
-        return lhs >= rhs
-    else:
-        return pyomo.Constraint.Skip
-
-
-# Constraint 12:
-def anti_dumping_measures_rule(m, stf, location, tech):
-    # Calculate the right-hand side for anti-dumping measures with location and tech indices
-    rhs = m.anti_dumping_index[location, tech] * (
-        m.capacity_ext_imported[stf, location, tech]
-        + m.capacity_ext_stock_imported[stf, location, tech]
-    )
-
-    # Print for debugging purposes
-    print(
-        f"Anti-Dumping Measure for {tech} at {location} in year {stf}: "
-        f"{m.anti_dumping_measures[stf, location, tech]} = {m.anti_dumping_index[location, tech]} * "
-        f"({m.capacity_ext_imported[stf, location, tech]} + "
-        f"{m.capacity_ext_stock_imported[stf, location, tech]})"
-    )
-
-    # Return the constraint expression
-    return m.anti_dumping_measures[stf, location, tech] == rhs
-
-
-# Constraint 13:
-def capacity_ext_new_limit_rule(m, stf, location, tech):
-    # Retrieve the values for debugging
-    capacity_value = m.capacity_ext_new[stf, location, tech]
-    ext_new_value = m.Q_ext_new[stf, location, tech]
-
-    # Debug print statements to see the values being used
-    print(
-        f"Debug: STF = {stf}, Location = {location}, Tech = {tech}, Capacity Solar New = {capacity_value}, max instalable Capacity = {ext_new_value}"
-    )
-
-    # Return the constraint with the debug information
-    return capacity_value <= ext_new_value
-
-
-# Constraint 14: time delay constraint for Eu primary
-def timedelay_EU_primary_production_rule(m, stf, location, tech):
-    if stf == m.y0:
-        return pyomo.Constraint.Skip
-    else:
-        # Retrieve values for debugging
-        lhs = (
-            m.capacity_ext_euprimary[stf, location, tech]
-            - m.capacity_ext_euprimary[stf - 1, location, tech]
-        )
-        rhs = (
-            m.deltaQ_EUprimary[location, tech]
-            + m.IR_EU_primary[location, tech]
-            * m.capacity_ext_euprimary[stf - 1, location, tech]
-        )
-
-        # Print both sides for debugging
-        print(
-            f"Debug: STF = {stf}, Location = {location}, Tech = {tech}, LHS = {lhs}, RHS = {rhs}"
-        )
-
-        return lhs <= rhs
-
-
-# Constraint 15: time delay constraint for EU secondary
-def timedelay_EU_secondary_production_rule(m, stf, location, tech):
-    if stf == m.y0:
-        return pyomo.Constraint.Skip
-    else:
-        # Retrieve values for debugging
-        lhs = (
-            m.capacity_ext_eusecondary[stf, location, tech]
-            - m.capacity_ext_eusecondary[stf - 1, location, tech]
-        )
-        rhs = (
-            m.deltaQ_EUsecondary[location, tech]
-            + m.IR_EU_secondary[location, tech]
-            * m.capacity_ext_eusecondary[stf - 1, location, tech]
-        )
-
-        # Print both sides for debugging
-        print(
-            f"Debug: STF = {stf}, Location = {location}, Tech = {tech}, LHS = {lhs}, RHS = {rhs}"
-        )
-
-        return lhs <= rhs
-
-
-# Constraint 16:
-def constraint1_EU_secondary_to_total_rule(m, stf, location, tech):
-    if m.y0 <= stf - m.l[location, tech]:
-        # Retrieve values for debugging
-        lhs = m.capacity_ext_eusecondary[stf, location, tech]
-        rhs = m.capacity_ext_new[stf - m.l, location, tech]
-
-        # Print both sides for debugging
-        print(
-            f"Debug: STF = {stf}, Location = {location}, Tech = {tech}, LHS = {lhs}, RHS = {rhs}"
-        )
-
-        return lhs <= rhs
-    else:
-        return pyomo.Constraint.Skip
-
-
-# Constraint 17:
-def constraint2_EU_secondary_to_total_rule(m, stf, location, tech):
-    if m.y0 >= stf - m.l[location, tech]:
-        # Retrieve values for debugging
-        lhs = m.capacity_ext_eusecondary[stf, location, tech]
-        rhs = (
-            m.DCR_solar[stf, location, tech] * m.capacity_ext[stf, location, tech]
-        )  # ToDo DCR Solar for other techs
-
-        # Print both sides for debugging
-        print(
-            f"Debug: STF = {stf}, Location = {location}, Tech = {tech}, LHS = {lhs}, RHS = {rhs}"
-        )
-
-        return lhs <= rhs
-    else:
-        return pyomo.Constraint.Skip
-
-
-# Constraint 18:
-def constraint_EU_primary_to_total_rule(m, stf, location, tech):
-    if stf == m.y0:
-        return pyomo.Constraint.Skip
-    else:
-        # Retrieve values for debugging
-        lhs = m.capacity_ext_euprimary[stf, location, tech]
-        rhs = (
-            m.DR_primary[location, tech]
-            * m.capacity_ext_euprimary[stf - 1, location, tech]
-        )
-
-        # Print both sides for debugging
-        print(
-            f"Debug: STF = {stf}, Location = {location}, Tech = {tech}, LHS = {lhs}, RHS = {rhs}"
-        )
-
-        return lhs >= rhs
-
-
-# Constraint 19:
-def constraint_EU_secondary_to_secondary_rule(m, stf, location, tech):
-    if stf == m.y0:
-        return pyomo.Constraint.Skip
-    else:
-        # Retrieve values for debugging
-        lhs = m.capacity_ext_eusecondary[stf, location, tech]
-        rhs = (
-            m.DR_secondary[location, tech]
-            * m.capacity_ext_eusecondary[stf - 1, location, tech]
-        )
-
-        # Print both sides for debugging
-        print(
-            f"Debug: STF = {stf}, Location = {location}, Tech = {tech}, LHS = {lhs}, RHS = {rhs}"
-        )
-
-        return lhs >= rhs
-
-
 # Addition made on 28th November:
 
 
@@ -2276,90 +1936,3 @@ def minimum_stock_level_rule(m, stf, location, tech):
     )
 
     return lhs <= rhs
-
-
-########################################
-#       dynamic feedback loop          #     13. January 2025
-########################################
-
-# -------EU-Primary-------#
-
-
-# equation 1
-def costsavings_rule_pri(m, stf):
-    # Debug statement to check the components of the sum
-    # print(f"costsavings_rule for stf={stf}:")
-    pricereduction_value_pri = sum(m.P_pri[n] * m.BD_pri[stf, n] for n in m.nsteps_pri)
-    # print(f"Calculated pricereduction: {pricereduction_value_pri}")
-
-    return m.pricereduction_pri[stf] == pricereduction_value_pri
-
-
-# equation 2
-def BD_limitation_rule_pri(m, stf):
-    # Debug statement to print the sum of BD[stf, n]
-    bd_sum_value_pri = sum(m.BD_pri[stf, n] for n in m.nsteps_pri)
-    # print(f"BD_limitation_rule for stf={stf}: Sum of BD is {bd_sum_value_pri}")
-
-    return bd_sum_value_pri == 1
-
-
-# equation 3
-def relation_pnew_to_pprior_pri(m, stf):
-    # Debug statement to print current price reduction values for stf and previous step
-    if stf == m.y0:
-        # print(f"relation_pnew_to_pprior: Skip for stf={stf} as it's the first time step (y0)")
-        return pyomo.Constraint.Skip
-    else:
-        # print(f"relation_pnew_to_pprior: Comparing pricereduction for stf={stf} and stf-1")
-        # print(
-        # f"pricereduction[{stf}] = {m.pricereduction_pri[stf]}, pricereduction[{stf - 1}] = {m.pricereduction_pri[stf - 1]}")
-        return m.pricereduction_pri[stf] >= m.pricereduction_pri[stf - 1]
-
-
-# equation 4
-def q_perstep_rule_pri(m, stf):
-    lhs_cumulative_sum = 0  # Reset LHS for each year
-    rhs_value = 0  # Reset RHS for each year
-
-    # Update cumulative sum for LHS (only for the current year)
-    for year in m.stf:
-        if year <= stf:  # Accumulate up to the current year (stf)
-            lhs_cumulative_sum += m.capacity_solar_euprimary[year]
-
-    # Calculate RHS based on selected stages (only for the current year)
-    rhs_value = sum(m.BD_pri[stf, n] * m.capacityperstep_pri[n] for n in m.nsteps_pri)
-
-    # Debug: Print LHS and selected RHS value for each year
-    # print(f"Step {stf}: LHS cumulative sum = {lhs_cumulative_sum}, RHS value = {rhs_value}")
-
-    # Return the constraint for this specific year
-    return lhs_cumulative_sum >= rhs_value
-
-
-# equation 5: z <= gamma * BD
-def upper_bound_z_eq_pri(m, stf, nsteps_pri):
-    z = m.BD_pri[stf, nsteps_pri] * m.capacity_solar_euprimary[stf]
-    # print("Z:",z)
-
-    return z <= m.gamma_pri * m.BD_pri[stf, nsteps_pri]
-
-
-# equation 6: z <= q1
-def upper_bound_z_q1_eq_pri(m, stf, nsteps_pri):
-    z = m.BD_pri[stf, nsteps_pri] * m.capacity_solar_euprimary[stf]
-    return z <= m.capacity_solar_euprimary[stf]
-
-
-# equation 7: z >= q1 - (1 - BD) * gamma
-def lower_bound_z_eq_pri(m, stf, nsteps_pri):
-    z = m.BD_pri[stf, nsteps_pri] * m.capacity_solar_euprimary[stf]
-    return z >= (
-        m.capacity_solar_euprimary[stf] - (1 - m.BD_pri[stf, nsteps_pri]) * m.gamma_pri
-    )
-
-
-# equation 8: z >= 0 (Non-negativity)
-def non_negativity_z_eq_pri(m, stf, nsteps_pri):
-    z = m.BD_pri[stf, nsteps_pri] * m.capacity_solar_euprimary[stf]
-    return z >= 0
