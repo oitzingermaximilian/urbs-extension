@@ -342,14 +342,28 @@ def apply_rm_constraints(m):
     ]
 
     for constraint in constraints:
-        if isinstance(constraint, (upper_bound_z_constraint_sec, upper_bound_z_q1_eq_sec, lower_bound_z_eq_sec, non_negativity_z_eq_sec)):
+        if isinstance(
+            constraint,
+            (
+                upper_bound_z_constraint_sec,
+                upper_bound_z_q1_eq_sec,
+                lower_bound_z_eq_sec,
+                non_negativity_z_eq_sec,
+            ),
+        ):
             for nsteps_sec in m.nsteps_sec:
                 m.add_constraint = pyomo.Constraint(
-                    m.stf, m.location, m.tech,
-                    rule=lambda m, stf, loc, tech: constraint.apply_rule(m, stf, loc, tech, nsteps_sec=nsteps_sec)
+                    m.stf,
+                    m.location,
+                    m.tech,
+                    rule=lambda m, stf, loc, tech: constraint.apply_rule(
+                        m, stf, loc, tech, nsteps_sec=nsteps_sec
+                    ),
                 )
         else:
             m.add_constraint = pyomo.Constraint(
-                m.stf, m.location, m.tech,
-                rule=lambda m, stf, loc, tech: constraint.apply_rule(m, stf, loc, tech)
+                m.stf,
+                m.location,
+                m.tech,
+                rule=lambda m, stf, loc, tech: constraint.apply_rule(m, stf, loc, tech),
             )

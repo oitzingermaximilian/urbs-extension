@@ -7,6 +7,7 @@ from urbs.extension.scrap import apply_scrap_constraints
 from urbs.extension.lr_remanufacturing import apply_rm_constraints
 from urbs.extension.lr_manufacturing import apply_m_constraints
 
+
 def create_model(
     data, data_urbsextensionv1, dt=8760, timesteps=None, objective="cost", dual=None
 ):
@@ -931,7 +932,7 @@ def create_model(
     # Scrap
     apply_scrap_constraints(m)
     apply_rm_constraints(m)
-    #apply_m_constraints(m)
+    # apply_m_constraints(m)
 
     # commodity constraints default
     m.res_vertex = pyomo.Constraint(
