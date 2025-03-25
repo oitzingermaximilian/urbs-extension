@@ -3,12 +3,14 @@ import pyomo.core as pyomo
 from datetime import datetime
 from .features import *
 from .input import *
-from urbs.extension.scrap import apply_scrap_constraints
-from urbs.extension.lr_remanufacturing import apply_rm_constraints
-from urbs.extension.lr_manufacturing import apply_m_constraints
-from urbs.extension.stockpile import apply_stockpiling_constraints
-from urbs.extension.balance_converter import apply_balance_constraints
-from urbs.extension.costs import apply_costs_constraints
+from urbs.extension import (
+    apply_scrap_constraints,
+    apply_rm_constraints,
+    apply_m_constraints,
+    apply_stockpiling_constraints,
+    apply_balance_constraints,
+    apply_costs_constraints,
+)
 
 
 def create_model(
@@ -841,10 +843,18 @@ def create_model(
     # m.best_estimate_TYNDP2050 = pyomo.Constraint(m.stf, rule=best_estimate_TYNDP2050_rule)
     # m.minimum_stock_level = pyomo.Constraint(m.stf, rule=minimum_stock_level_rule)
 
-    ########################################################################################################################
+    ####################################################################################################################
+    ####################################################################################################################
+    ####################################################################################################################
     """
+    
     This Section is used to read in certain packages and features coded to modify the basic urbs model. 
-    It links the basic urbs model with our own Constraints and passes these Constraints to the model "m"
+    It links the basic urbs model with our own Constraints and passes these Constraints to the model "m".
+    In this Section certain packages can be disabled or enabled by commenting them out. 
+    
+        Note: If a package is disabled, the constraints are no longer active in the model. 
+        If a package is enabled, the constraints are active in the model.
+        
     """
 
     apply_stockpiling_constraints(m)
@@ -855,13 +865,14 @@ def create_model(
 
     apply_scrap_constraints(m)
 
-    # apply_m_constraints(m)
-
     apply_balance_constraints(m)
 
     apply_costs_constraints(m)
 
-    ########################################################################################################################
+    ####################################################################################################################
+    ####################################################################################################################
+    ####################################################################################################################
+
     # commodity constraints default
     m.res_vertex = pyomo.Constraint(
         m.tm,
