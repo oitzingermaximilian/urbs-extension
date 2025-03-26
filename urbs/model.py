@@ -5,7 +5,8 @@ from .features import *
 from .input import *
 from urbs.extension import (
     apply_scrap_constraints,
-    apply_rm_constraints,
+    apply_rm2_constraints,
+    apply_rm1_constraints,
     apply_m_constraints,
     apply_stockpiling_constraints,
     apply_balance_constraints,
@@ -374,7 +375,9 @@ def create_model(
 
     # apply_m_constraints(m)
 
-    apply_rm_constraints(m)
+    #apply_rm1_constraints(m)
+
+    #apply_rm2_constraints(m)
 
     apply_scrap_constraints(m)
 
@@ -603,7 +606,7 @@ def res_vertex_rule(m, tm, stf, sit, com, com_type):
             if (tm, stf, sit, tech) in m.balance_ext:
                 power_surplus += m.balance_ext[tm, stf, sit, tech]
 
-    print(power_surplus)
+    #print(power_surplus)
     # if com is a stock commodity, the commodity source term e_co_stock
     # can supply a possibly negative power_surplus
     if com in m.com_stock:

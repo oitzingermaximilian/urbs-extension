@@ -71,52 +71,23 @@ class capacity_scrap_dec_rule(AbstractConstraint):
 
 class capacity_scrap_rec_rule(AbstractConstraint):
     def apply_rule(self, m, stf, location, tech):
-        """
-        Defines a rule to ensure the relationship between capacity of scrap recovery and
-        other related parameters and variables in the system.
-
-        This rule enforces that the capacity of scrap recovery for a specific staff unit
-        (stf), location, and technology equals the calculated value based on the mining
-        factor, recycling factor, and secondary external use capacity.
-
-        Args:
-            m: The model instance that holds parameters, variables, and constraints
-                for the optimization problem.
-            stf: Specific staff unit considered in the system.
-            location: Location where the operation takes place.
-            tech: Technology associated with the considered operation.
-
-        Returns:
-            A Boolean expression representing the equality constraint for the rule.
-        """
-        return m.capacity_scrap_rec[stf, location, tech] == (
-            (m.f_mining[location, tech] / m.f_recycling[location, tech])
-            * m.capacity_ext_eusecondary[stf, location, tech]
-        )
+        if tech == "solarPV":
+            return m.capacity_scrap_rec[stf, location, tech] == (
+                (m.f_mining[location, tech] / m.f_recycling[location, tech])
+                * m.capacity_ext_eusecondary[stf, location, tech]
+            )
+        elif tech in ["windon", "windoff"]:
+            return pyomo.Constraint.Skip
+        else:
+            return pyomo.Constraint.Skip
 
 
 class capacity_scrap_total_rule(AbstractConstraint):
     def apply_rule(self, m, stf, location, tech):
-        """
-        Determines whether the total scrap capacity constraint for a specified staff,
-        location, and technology should be applied or skipped.
+        if tech in ["windon", "windoff"]:
+            if stf == m.y0:
+                return m.capacity_scrap_total[stf, location, tech] == m.capacity_scrap_dec[stf, location, tech]
 
-        This function establishes a relationship between total scrap capacity,
-        scrap capacity decommissioned, and scrap capacity recovered for a
-        specific combination of staff, location, and technology. If the specified
-        staff parameter (stf) matches the base year (m.y0), the function
-        returns a condition for the corresponding total scrap capacity rule.
-        Otherwise, it skips the application of this constraint.
-
-        Args:
-            m: A Pyomo model instance.
-            stf: Staff parameter to check against the model's base year.
-            location: Geographical or functional location identifier.
-            tech: Technological category or identifier.
-
-        Returns:
-            Constraint or a value indicating to skip application of the constraint.
-        """
         if stf == m.y0:
             return (
                 m.capacity_scrap_total[stf, location, tech]
@@ -129,22 +100,11 @@ class capacity_scrap_total_rule(AbstractConstraint):
 
 class capacity_scrap_total_rule2(AbstractConstraint):
     def apply_rule(self, m, stf, location, tech):
-        """
-        Determines and enforces the total capacity scrap rule for the given parameters. This function is used
-        to skip the constraint for the initial stage (y0) or enforce the constraint for subsequent stages.
-        The constraint ensures that the capacity scrap total for a given staffing (stf), location, and
-        technology (tech) is updated based on the capacity scrap decrease and reception.
-
-        Args:
-            m: The Pyomo model object containing the variables and parameters for the constraint.
-            stf: An integer representing the staffing stage.
-            location: The spatial location corresponding to the current calculation.
-            tech: The type of technology associated with the model.
-
-        Returns:
-            pyomo.Constraint.Skip if the staffing stage equals the initial value (m.y0), else the
-            equality constraint for capacity scrap total is returned.
-        """
+        if tech in ["windon", "windoff"]:
+            if stf == m.y0:
+                return pyomo.Constraint.Skip
+            else:
+                return m.capacity_scrap_total[stf, location, tech] == m.capacity_scrap_total[stf - 1, location, tech] + m.capacity_scrap_dec[stf, location, tech]
         if stf == m.y0:
             return pyomo.Constraint.Skip
         else:
@@ -155,27 +115,10 @@ class capacity_scrap_total_rule2(AbstractConstraint):
                 - m.capacity_scrap_rec[stf, location, tech]
             )
 
-
 class cost_scrap_rule(AbstractConstraint):
     def apply_rule(self, m, stf, location, tech):
-        """
-        Calculates the scrap cost rule based on the scrap recovery factor and the corresponding
-        recovery capacity for a particular scenario.
-
-        The function enforces that the scrap cost for a given staff, location, and technology
-        is equivalent to the product of the scrap recovery factor and the scrap recovery
-        capacity for the same criteria.
-
-        Args:
-            m: Model object containing relevant parameters and constraints.
-            stf: Staff identifier.
-            location: Location identifier.
-            tech: Technology identifier.
-
-        Returns:
-            A boolean expression that validates the relationship between
-            the scrap cost, scrap recovery factor, and recovery capacity.
-        """
+        if tech in ["windon", "windoff"]:
+            return pyomo.Constraint.Skip
         return (
             m.cost_scrap[stf, location, tech]
             == m.f_scrap_rec[stf, location, tech]
@@ -219,28 +162,8 @@ class scrap_total_decrease_rule(AbstractConstraint):
 
 class scrap_recycling_increase_rule(AbstractConstraint):
     def apply_rule(self, m, stf, location, tech):
-        """
-        Implements a Pyomo constraint rule to impose a limit on the increase in scrap recycling
-        capacity at a specific location and technology between consecutive simulation timeframes.
-        The rule ensures that the increase in capacity does not exceed a predefined fraction
-        (`f_increase`) of the capacity in the preceding simulation timeframe.
-
-        Args:
-            m: Pyomo model representing the optimization problem, containing all relevant
-                parameters, variables, and constraints.
-            stf: Simulation timeframe, an integer representing the specific period for which
-                the constraint is applied.
-            location: String or identifier representing the specific location where the constraint is evaluated.
-            tech: String or identifier representing the specific technology associated with
-                the recycling process being modeled.
-
-        Returns:
-            Pyomo.Constraint.Skip: Skips constraint evaluation if the current timeframe (`stf`)
-                is the initialization time (`y0`).
-            Expression: A constraint ensuring that the change in capacity for the specified
-                location and technology at the current timeframe conforms to the predefined
-                limit, compared to the preceding timeframe.
-        """
+        if tech in ["windon", "windoff"]:
+            return pyomo.Constraint.Skip
         if stf == m.y0:
             return pyomo.Constraint.Skip
         else:

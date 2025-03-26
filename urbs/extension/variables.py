@@ -82,7 +82,7 @@ def apply_variables(m):
     # m.BD_pri = pyomo.Var(m.stf, m.nsteps_pri, domain=pyomo.Binary)
 
     """
-    These Variables are used for the lr_remanufacturing.py script constraints.
+    These Variables are used for the lr_remanufacturing_part_1.py script constraints.
     """
     m.pricereduction_sec = pyomo.Var(
         m.stf, m.location, m.tech, domain=pyomo.NonNegativeReals

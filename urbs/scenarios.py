@@ -24,10 +24,12 @@ def scenario_base(data, data_urbsextensionv1):
             if stf == 2024:
                 pro.loc[(stf, "EU27", "Wind (onshore)"), "inst-cap"] = 0
                 pro.loc[(stf, "EU27", "Wind (offshore)"), "inst-cap"] = 0
+                pro.loc[(stf, "EU27", "Biomass Plant"), "inst-cap"] = 20420
 
             else:
                 pro.loc[(stf, "EU27", "Wind (onshore)"), "cap-up"] = 0
                 pro.loc[(stf, "EU27", "Wind (offshore)"), "cap-up"] = 0
+                pro.loc[(stf, "EU27", "Biomass Plant"), "cap-up"] = 40000
 
     print(data["process"])
 

@@ -303,7 +303,9 @@ def apply_sets_and_params(m, data_urbsextensionv1):
     # Assuming wind is added to m.tech and further locations
     # P_sec initialization (price reduction)
     variation_14_updated = {
-        (n, tech, loc): value if tech == "solarPV" else 0
+        (n, tech, loc): (
+            value if tech in ["solarPV", "windon", "windoff"] else 0
+        )
         for n, value in {
             0: 0,
             1: 46841.69972,
@@ -343,7 +345,15 @@ def apply_sets_and_params(m, data_urbsextensionv1):
                     }.get(n, 0)  # Default to 0 for other steps
                 else:
                     # For other technologies (like wind), set the default to 0
-                    capacity_init_values[(n, loc, tech)] = 0
+                    capacity_init_values[(n, loc, tech)] = {
+                        0: 0,
+                        1: 100,
+                        2: 1000,
+                        3: 10000,
+                        4: 100000,
+                        5: 1000000,
+                        6: 10000000,
+                    }.get(n, 0)  # Default to 0 for other steps
     print(capacity_init_values)
 
     # Now initialize the Param with the dictionary
