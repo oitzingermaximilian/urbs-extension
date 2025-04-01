@@ -6,7 +6,8 @@ from .costs import apply_costs_constraints
 from .variables import apply_variables
 from .sets_and_params import apply_sets_and_params
 from .lr_remanufacturing import apply_combined_lr_constraints
-from.scenario_constraints import apply_scenario_constraints
+from .scenario_constraints import apply_scenario_constraints
+
 __all__ = [
     "apply_scrap_constraints",
     "apply_m_constraints",
@@ -16,5 +17,5 @@ __all__ = [
     "apply_variables",
     "apply_sets_and_params",
     "apply_combined_lr_constraints",
-    "apply_scenario_constraints"
+    "apply_scenario_constraints",
 ]

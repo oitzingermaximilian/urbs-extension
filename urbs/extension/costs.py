@@ -30,8 +30,8 @@ class DefCostsNew(AbstractConstraint):
                 for tech in m.tech
             )
 
-            #print("Calculating Import Cost Total:")
-            #print(f"Total Import Cost = {total_import_cost}")
+            # print("Calculating Import Cost Total:")
+            # print(f"Total Import Cost = {total_import_cost}")
             return m.costs_new[cost_type_new] == total_import_cost
 
         elif cost_type_new == "Storagecost":
@@ -43,8 +43,8 @@ class DefCostsNew(AbstractConstraint):
                 for tech in m.tech
             )
 
-            #print("Calculating Storage Cost Total:")
-            #print(f"Total Storage Cost = {total_storage_cost}")
+            # print("Calculating Storage Cost Total:")
+            # print(f"Total Storage Cost = {total_storage_cost}")
             return m.costs_new[cost_type_new] == total_storage_cost
 
         elif cost_type_new == "Eu Cost Primary":
@@ -57,8 +57,8 @@ class DefCostsNew(AbstractConstraint):
                 for tech in m.tech
             )
 
-            #print("Calculating EU Primary Cost Total:")
-            #print(f"Total EU Primary Cost = {total_eu_cost_primary}")
+            # print("Calculating EU Primary Cost Total:")
+            # print(f"Total EU Primary Cost = {total_eu_cost_primary}")
             return m.costs_new[cost_type_new] == total_eu_cost_primary
 
         elif cost_type_new == "Eu Cost Secondary":
@@ -67,19 +67,18 @@ class DefCostsNew(AbstractConstraint):
                 (
                     (
                         m.EU_secondary_costs[stf, site, tech]
-                       #- m.pricereduction_sec[stf, site, tech]
+                        - m.pricereduction_sec[stf, site, tech]
                         + m.cost_scrap[stf, site, tech]
                     )
                     * m.capacity_ext_eusecondary[stf, site, tech]
                 )
-
                 for stf in m.stf
                 for site in m.location
                 for tech in m.tech
             )
 
-            #print("Calculating EU Secondary Cost Total:")
-            #print(f"Total EU Secondary Cost = {total_eu_cost_secondary}")
+            # print("Calculating EU Secondary Cost Total:")
+            # print(f"Total EU Secondary Cost = {total_eu_cost_secondary}")
             return m.costs_new[cost_type_new] == total_eu_cost_secondary
 
         else:
@@ -100,8 +99,8 @@ class CalculateYearlyImportCost(AbstractConstraint):
             )
             + m.anti_dumping_measures[stf, location, tech]
         )
-        #print(f"Debug: STF = {stf}, Location = {location}, Tech = {tech}")
-        #print(f"Total Yearly Import Cost = {import_cost_value}")
+        # print(f"Debug: STF = {stf}, Location = {location}, Tech = {tech}")
+        # print(f"Total Yearly Import Cost = {import_cost_value}")
         return m.costs_ext_import[stf, location, tech] == import_cost_value
 
 
@@ -110,8 +109,8 @@ class CalculateYearlyStorageCost(AbstractConstraint):
         storage_cost_value = (
             m.STORAGECOST[location, tech] * m.capacity_ext_stock[stf, location, tech]
         )
-        #print(f"Debug: STF = {stf}, Location = {location}, Tech = {tech}")
-        #print(f"Total Yearly Storage Cost = {storage_cost_value}")
+        # print(f"Debug: STF = {stf}, Location = {location}, Tech = {tech}")
+        # print(f"Total Yearly Storage Cost = {storage_cost_value}")
         return m.costs_ext_storage[stf, location, tech] == storage_cost_value
 
 
@@ -121,8 +120,8 @@ class CalculateYearlyEUPrimary(AbstractConstraint):
             m.EU_primary_costs[stf, location, tech]
             * m.capacity_ext_euprimary[stf, location, tech]
         )
-        #print(f"Debug: STF = {stf}, Location = {location}, Tech = {tech}")
-        #print(f"Total Yearly EU Primary Cost = {eu_primary_cost_value}")
+        # print(f"Debug: STF = {stf}, Location = {location}, Tech = {tech}")
+        # print(f"Total Yearly EU Primary Cost = {eu_primary_cost_value}")
         return m.costs_EU_primary[stf, location, tech] == eu_primary_cost_value
 
 
@@ -130,11 +129,11 @@ class CalculateYearlyEUSecondary(AbstractConstraint):
     def apply_rule(self, m, stf, location, tech):
         eu_secondary_cost_value = (
             m.EU_secondary_costs[stf, location, tech]
-            #- m.pricereduction_sec[stf, location, tech]
+            - m.pricereduction_sec[stf, location, tech]
             + m.cost_scrap[stf, location, tech]
         ) * m.capacity_ext_eusecondary[stf, location, tech]
-        #print(f"Debug: STF = {stf}, Location = {location}, Tech = {tech}")
-        #print(f"Total Yearly EU Secondary Cost = {eu_secondary_cost_value}")
+        # print(f"Debug: STF = {stf}, Location = {location}, Tech = {tech}")
+        # print(f"Total Yearly EU Secondary Cost = {eu_secondary_cost_value}")
         return m.costs_EU_secondary[stf, location, tech] == eu_secondary_cost_value
 
 

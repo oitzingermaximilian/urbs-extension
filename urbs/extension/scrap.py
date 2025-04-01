@@ -86,7 +86,10 @@ class capacity_scrap_total_rule(AbstractConstraint):
     def apply_rule(self, m, stf, location, tech):
         if tech in ["windon", "windoff"]:
             if stf == m.y0:
-                return m.capacity_scrap_total[stf, location, tech] == m.capacity_scrap_dec[stf, location, tech]
+                return (
+                    m.capacity_scrap_total[stf, location, tech]
+                    == m.capacity_scrap_dec[stf, location, tech]
+                )
 
         if stf == m.y0:
             return (
@@ -104,7 +107,11 @@ class capacity_scrap_total_rule2(AbstractConstraint):
             if stf == m.y0:
                 return pyomo.Constraint.Skip
             else:
-                return m.capacity_scrap_total[stf, location, tech] == m.capacity_scrap_total[stf - 1, location, tech] + m.capacity_scrap_dec[stf, location, tech]
+                return (
+                    m.capacity_scrap_total[stf, location, tech]
+                    == m.capacity_scrap_total[stf - 1, location, tech]
+                    + m.capacity_scrap_dec[stf, location, tech]
+                )
         if stf == m.y0:
             return pyomo.Constraint.Skip
         else:
@@ -114,6 +121,7 @@ class capacity_scrap_total_rule2(AbstractConstraint):
                 + m.capacity_scrap_dec[stf, location, tech]
                 - m.capacity_scrap_rec[stf, location, tech]
             )
+
 
 class cost_scrap_rule(AbstractConstraint):
     def apply_rule(self, m, stf, location, tech):

@@ -19,9 +19,9 @@ class CapacityExtGrowthRule(AbstractConstraint):
                 + m.capacity_ext_new[stf, location, tech]
                 - m.capacity_dec[stf, location, tech]
             )
-            #print(
+            # print(
             #    f"Capacity extension package for {tech} at {location} in year {stf}: {capacity_extensionpackage}"
-            #)
+            # )
             return capacity_extensionpackage
 
 
@@ -34,9 +34,9 @@ class InitialCapacityRule(AbstractConstraint):
                 + m.capacity_ext_new[stf, location, tech]
                 - m.capacity_dec[stf, location, tech]
             )
-            #print(
+            # print(
             #    f"Initial Capacity for {tech} at {location} in year {stf}: {capacity_eq1}"
-            #)
+            # )
             return capacity_eq1
         else:
             return pyomo.Constraint.Skip
@@ -50,9 +50,9 @@ class CapacityExtNewRule(AbstractConstraint):
             + m.capacity_ext_euprimary[stf, location, tech]
             + m.capacity_ext_eusecondary[stf, location, tech]
         )
-        #print(
+        # print(
         #    f"Capacity Extension New for {tech} at {location} in year {stf}: {capacity_eq2}"
-        #)
+        # )
         return capacity_eq2
 
 
@@ -66,9 +66,9 @@ class CapacityExtStockRule(AbstractConstraint):
                 + m.capacity_ext_stock_imported[stf, location, tech]
                 - m.capacity_ext_stockout[stf, location, tech]
             )
-            #print(
+            # print(
             #    f"Capacity Extension Stock for {tech} at {location} in year {stf}: {capacity_eq3}"
-            #)
+            # )
             return capacity_eq3
 
 
@@ -80,9 +80,9 @@ class CapacityExtStockInitialRule(AbstractConstraint):
                 + m.capacity_ext_stock_imported[stf, location, tech]
                 - m.capacity_ext_stockout[stf, location, tech]
             )
-            #print(
+            # print(
             #    f"Capacity Extension Stock Initial for {tech} at {location} in year {stf}: {capacity_eq4}"
-            #)
+            # )
             return capacity_eq4
         else:
             return pyomo.Constraint.Skip
@@ -98,7 +98,7 @@ class StockTurnoverRule(AbstractConstraint):
                 for j in range(stf, stf + m.n)
                 if j in m.capacity_ext_stockout
             )
-            #print(f"LHS for {tech} at {location} in year {stf}: {lhs}")
+            # print(f"LHS for {tech} at {location} in year {stf}: {lhs}")
 
             rhs = (
                 m.FT
@@ -109,7 +109,7 @@ class StockTurnoverRule(AbstractConstraint):
                     if j in m.capacity_ext_stock
                 )
             )
-            #print(f"RHS for {tech} at {location} in year {stf}: {rhs}")
+            # print(f"RHS for {tech} at {location} in year {stf}: {rhs}")
 
             return lhs >= rhs
         else:
@@ -123,24 +123,34 @@ class AntiDumpingMeasuresRule(AbstractConstraint):
             + m.capacity_ext_stock_imported[stf, location, tech]
         )
 
-        #print(
+        # print(
         #    f"Anti-Dumping Measure for {tech} at {location} in year {stf}: "
         #    f"{m.anti_dumping_measures[stf, location, tech]} = {rhs}"
-        #)
+        # )
 
         return m.anti_dumping_measures[stf, location, tech] == rhs
 
 
 class CapacityExtNewLimitRule(AbstractConstraint):
     def apply_rule(self, m, stf, location, tech):
-        capacity_value = m.capacity_ext_new[stf, location, tech]
-        ext_new_value = m.Q_ext_new[stf, location, tech] #+ m.capacity_dec[stf, location, tech]
+        if stf == m.y0:
+            cap_val = m.capacity_ext_new[stf, location, tech]
+            ext_val = ext_new_value = (
+                m.Q_ext_new[stf, location, tech] + m.capacity_dec_start[location, tech]
+            )
+            return cap_val <= ext_val
+        else:
+            capacity_value = m.capacity_ext_new[stf, location, tech]
+            ext_new_value = (
+                m.Q_ext_new[stf, location, tech]
+                + m.capacity_dec[stf - 1, location, tech]
+            )
 
-        #print(
-        #    f"Debug: STF = {stf}, Location = {location}, Tech = {tech}, Capacity Solar New = {capacity_value}, max installable Capacity = {ext_new_value}"
-        #)
+            # print(
+            #    f"Debug: STF = {stf}, Location = {location}, Tech = {tech}, Capacity Solar New = {capacity_value}, max installable Capacity = {ext_new_value}"
+            # )
 
-        return capacity_value <= ext_new_value
+            return capacity_value <= ext_new_value
 
 
 class TimedelayEUPrimaryProductionRule(AbstractConstraint):
@@ -158,9 +168,9 @@ class TimedelayEUPrimaryProductionRule(AbstractConstraint):
                 * m.capacity_ext_euprimary[stf - 1, location, tech]
             )
 
-            #print(
+            # print(
             #    f"Debug: STF = {stf}, Location = {location}, Tech = {tech}, LHS = {lhs}, RHS = {rhs}"
-            #)
+            # )
 
             return lhs <= rhs
 
@@ -180,9 +190,9 @@ class TimedelayEUSecondaryProductionRule(AbstractConstraint):
                 * m.capacity_ext_eusecondary[stf - 1, location, tech]
             )
 
-            #print(
+            # print(
             #    f"Debug: STF = {stf}, Location = {location}, Tech = {tech}, LHS = {lhs}, RHS = {rhs}"
-            #)
+            # )
 
             return lhs <= rhs
 
@@ -194,9 +204,9 @@ class Constraint1EUSecondaryToTotalRule(AbstractConstraint):
             lhs = m.capacity_ext_eusecondary[stf, location, tech]
             rhs = m.capacity_ext_new[stf - l_value, location, tech]
 
-            #print(
+            # print(
             #    f"Debug: STF = {stf}, Location = {location}, Tech = {tech}, LHS = {lhs}, RHS = {rhs}"
-            #)
+            # )
 
             return lhs <= rhs
         else:
@@ -210,9 +220,9 @@ class Constraint2EUSecondaryToTotalRule(AbstractConstraint):
             lhs = m.capacity_ext_eusecondary[stf, location, tech]
             rhs = m.DCR_solar[stf, location, tech] * m.capacity_ext[stf, location, tech]
 
-            #print(
+            # print(
             #    f"Debug: STF = {stf}, Location = {location}, Tech = {tech}, LHS = {lhs}, RHS = {rhs}"
-            #)
+            # )
 
             return lhs <= rhs
         else:
@@ -230,9 +240,9 @@ class ConstraintEUPrimaryToTotalRule(AbstractConstraint):
                 * m.capacity_ext_euprimary[stf - 1, location, tech]
             )
 
-            #print(
+            # print(
             #    f"Debug: STF = {stf}, Location = {location}, Tech = {tech}, LHS = {lhs}, RHS = {rhs}"
-            #)
+            # )
 
             return lhs >= rhs
 
@@ -248,9 +258,9 @@ class ConstraintEUSecondaryToSecondaryRule(AbstractConstraint):
                 * m.capacity_ext_eusecondary[stf - 1, location, tech]
             )
 
-            #print(
+            # print(
             #    f"Debug: STF = {stf}, Location = {location}, Tech = {tech}, LHS = {lhs}, RHS = {rhs}"
-            #)
+            # )
 
             return lhs >= rhs
 
@@ -262,9 +272,9 @@ class ConstraintMaxIntoStockRule(AbstractConstraint):
         rhs = 0.5 * m.capacity_ext_imported[stf, location, tech]
 
         # Debugging: Print the LHS and RHS values
-        #print(
+        # print(
         #    f"Debug: STF = {stf}, Location = {location}, Tech = {tech}, LHS = {lhs}, RHS = {rhs}"
-        #)
+        # )
 
         return lhs <= rhs
 

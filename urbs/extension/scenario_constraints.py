@@ -7,13 +7,14 @@ class AbstractConstraint(ABC):
     def apply_rule(self, m, *args):
         pass
 
+
 class net_zero_industrialactbenchmark_rule_a(AbstractConstraint):
     def apply_rule(self, m, stf, location, tech):
         lhs = (
-                m.capacity_ext_euprimary[stf, location, tech]
-                + m.capacity_ext_eusecondary[stf, location, tech]
-                + m.capacity_ext_stockout[stf, location, tech]
-                - m.capacity_ext_stock_imported[stf, location, tech]
+            m.capacity_ext_euprimary[stf, location, tech]
+            + m.capacity_ext_eusecondary[stf, location, tech]
+            + m.capacity_ext_stockout[stf, location, tech]
+            - m.capacity_ext_stock_imported[stf, location, tech]
         )
 
         rhs = 0.4 * m.capacity_ext_new[stf, location, tech]
@@ -27,9 +28,7 @@ class net_zero_industrialactbenchmark_rule_a(AbstractConstraint):
 
 
 def apply_scenario_constraints(m):
-    constraints = [
-        net_zero_industrialactbenchmark_rule_a()
-    ]
+    constraints = [net_zero_industrialactbenchmark_rule_a()]
 
     m.net_zero_industrialactbenchmark_rule_a = pyomo.Constraint(
         m.stf,
@@ -37,4 +36,3 @@ def apply_scenario_constraints(m):
         m.tech,
         rule=lambda m, stf, loc, tech: constraints[0].apply_rule(m, stf, loc, tech),
     )
-

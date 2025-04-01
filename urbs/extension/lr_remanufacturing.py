@@ -35,9 +35,9 @@ class costsavings_constraint_sec(AbstractConstraint):
             m.P_sec[n, tech, location] * m.BD_sec[stf, location, tech, n]
             for n in m.nsteps_sec
         )
-        print(
-            f"Calculated pricereduction for {stf}, {location}, {tech}: {pricereduction_value_sec}"
-        )
+        # print(
+        #    f"Calculated pricereduction for {stf}, {location}, {tech}: {pricereduction_value_sec}"
+        # )
 
         return m.pricereduction_sec[stf, location, tech] == pricereduction_value_sec
 
@@ -67,9 +67,9 @@ class BD_limitation_constraint_sec(AbstractConstraint):
         """
         # Debug statement to print the sum of BD[stf, n]
         bd_sum_value_sec = sum(m.BD_sec[stf, location, tech, n] for n in m.nsteps_sec)
-        print(
-            f"BD_limitation_rule for stf={stf}, Location={location}, Tech={tech}: Sum of BD is {bd_sum_value_sec}"
-        )
+        # print(
+        #    f"BD_limitation_rule for stf={stf}, Location={location}, Tech={tech}: Sum of BD is {bd_sum_value_sec}"
+        # )
 
         return bd_sum_value_sec <= 1
 
@@ -101,12 +101,12 @@ class relation_pnew_to_pprior_constraint_sec(AbstractConstraint):
             return pyomo.Constraint.Skip
         else:
             # Debug: Print the comparison between current and previous pricereduction
-            print(
-                f"Debug: relation_pnew_to_pprior_sec for stf={stf}: pricereduction[{stf}] = {m.pricereduction_sec[stf, location, tech]}, pricereduction[{stf - 1}] = {m.pricereduction_sec[stf - 1, location, tech]}"
-            )
+            # print(
+            #    f"Debug: relation_pnew_to_pprior_sec for stf={stf}: pricereduction[{stf}] = {m.pricereduction_sec[stf, location, tech]}, pricereduction[{stf - 1}] = {m.pricereduction_sec[stf - 1, location, tech]}"
+            # )
             return (
-                    m.pricereduction_sec[stf, location, tech]
-                    >= m.pricereduction_sec[stf - 1, location, tech]
+                m.pricereduction_sec[stf, location, tech]
+                >= m.pricereduction_sec[stf - 1, location, tech]
             )
 
 
@@ -134,9 +134,9 @@ class q_perstep_constraint_sec(AbstractConstraint):
         rhs_value_sec = 0  # Reset RHS for each year
 
         # Debugging: Check if the indices are correct
-        print(
-            f"Running q_perstep_rule_sec for stf={stf}, location={location}, tech={tech}"
-        )
+        # print(
+        #    f"Running q_perstep_rule_sec for stf={stf}, location={location}, tech={tech}"
+        # )
 
         # Update cumulative sum for LHS (only for the current year)
         for year in m.stf:
@@ -158,9 +158,9 @@ class q_perstep_constraint_sec(AbstractConstraint):
         )
 
         # Debug: Print LHS and selected RHS value for each year
-        print(
-            f"Step {stf}: LHS cumulative sum = {lhs_cumulative_sum_sec}, RHS value = {rhs_value_sec}"
-        )
+        # print(
+        #    f"Step {stf}: LHS cumulative sum = {lhs_cumulative_sum_sec}, RHS value = {rhs_value_sec}"
+        # )
 
         # Return the constraint for this specific year
         return lhs_cumulative_sum_sec >= rhs_value_sec
@@ -186,15 +186,15 @@ class upper_bound_z_constraint_sec(AbstractConstraint):
                 value of the constraint, otherwise False.
         """
         lhs_value = (
-                m.BD_sec[stf, location, tech, nsteps_sec]
-                * m.capacity_ext_eusecondary[stf, location, tech]
+            m.BD_sec[stf, location, tech, nsteps_sec]
+            * m.capacity_ext_eusecondary[stf, location, tech]
         )
         rhs_value = m.gamma_sec * m.BD_sec[stf, location, tech, nsteps_sec]
 
         # Debug: Print the left-hand side and right-hand side for upper bound comparison
-        print(
-            f"Debug: upper_bound_z_eq_sec for stf={stf}, nsteps_sec={nsteps_sec}: LHS = {lhs_value}, RHS = {rhs_value}"
-        )
+        # print(
+        #    f"Debug: upper_bound_z_eq_sec for stf={stf}, nsteps_sec={nsteps_sec}: LHS = {lhs_value}, RHS = {rhs_value}"
+        # )
 
         return lhs_value <= rhs_value
 
@@ -223,15 +223,15 @@ class upper_bound_z_q1_eq_sec(AbstractConstraint):
         """
 
         lhs_value = (
-                m.BD_sec[stf, location, tech, nsteps_sec]
-                * m.capacity_ext_eusecondary[stf, location, tech]
+            m.BD_sec[stf, location, tech, nsteps_sec]
+            * m.capacity_ext_eusecondary[stf, location, tech]
         )
         rhs_value = m.capacity_ext_eusecondary[stf, location, tech]
 
         # Debug: Print the left-hand side and right-hand side for upper bound comparison
-        print(
-            f"Debug: upper_bound_z_q1_eq_sec for stf={stf}, nsteps_sec={nsteps_sec}: LHS = {lhs_value}, RHS = {rhs_value}"
-        )
+        # print(
+        #    f"Debug: upper_bound_z_q1_eq_sec for stf={stf}, nsteps_sec={nsteps_sec}: LHS = {lhs_value}, RHS = {rhs_value}"
+        # )
 
         return lhs_value <= rhs_value
 
@@ -261,18 +261,18 @@ class lower_bound_z_eq_sec(AbstractConstraint):
         """
 
         lhs_value = (
-                m.BD_sec[stf, location, tech, nsteps_sec]
-                * m.capacity_ext_eusecondary[stf, location, tech]
+            m.BD_sec[stf, location, tech, nsteps_sec]
+            * m.capacity_ext_eusecondary[stf, location, tech]
         )
         rhs_value = (
-                m.capacity_ext_eusecondary[stf, location, tech]
-                - (1 - m.BD_sec[stf, location, tech, nsteps_sec]) * m.gamma_sec
+            m.capacity_ext_eusecondary[stf, location, tech]
+            - (1 - m.BD_sec[stf, location, tech, nsteps_sec]) * m.gamma_sec
         )
 
         # Debug: Print the left-hand side and right-hand side for lower bound comparison
-        print(
-            f"Debug: lower_bound_z_eq_sec for stf={stf}, nsteps_sec={nsteps_sec}: LHS = {lhs_value}, RHS = {rhs_value}"
-        )
+        # print(
+        #    f"Debug: lower_bound_z_eq_sec for stf={stf}, nsteps_sec={nsteps_sec}: LHS = {lhs_value}, RHS = {rhs_value}"
+        # )
 
         return lhs_value >= rhs_value
 
@@ -306,14 +306,14 @@ class non_negativity_z_eq_sec(AbstractConstraint):
         """
 
         lhs_value = (
-                m.BD_sec[stf, location, tech, nsteps_sec]
-                * m.capacity_ext_eusecondary[stf, location, tech]
+            m.BD_sec[stf, location, tech, nsteps_sec]
+            * m.capacity_ext_eusecondary[stf, location, tech]
         )
 
         # Debug: Print the value of the non-negativity constraint
-        print(
-            f"Debug: non_negativity_z_eq_sec for stf={stf}, nsteps_sec={nsteps_sec}: LHS = {lhs_value}"
-        )
+        # print(
+        #    f"Debug: non_negativity_z_eq_sec for stf={stf}, nsteps_sec={nsteps_sec}: LHS = {lhs_value}"
+        # )
 
         return lhs_value >= 0
 
@@ -323,14 +323,14 @@ def apply_combined_lr_constraints(m):
         costsavings_constraint_sec(),
         BD_limitation_constraint_sec(),
         relation_pnew_to_pprior_constraint_sec(),
-        q_perstep_constraint_sec()
+        q_perstep_constraint_sec(),
     ]
 
     constraints_rm2 = [
         upper_bound_z_constraint_sec(),
         upper_bound_z_q1_eq_sec(),
         lower_bound_z_eq_sec(),
-        non_negativity_z_eq_sec()
+        non_negativity_z_eq_sec(),
     ]
 
     for i, constraint in enumerate(constraints_rm1):
@@ -356,6 +356,8 @@ def apply_combined_lr_constraints(m):
                 m.location,
                 m.tech,
                 m.nsteps_sec,
-                rule=lambda m, stf, loc, tech, nsteps_sec: constraint.apply_rule(m, stf, loc, tech, nsteps_sec),
+                rule=lambda m, stf, loc, tech, nsteps_sec: constraint.apply_rule(
+                    m, stf, loc, tech, nsteps_sec
+                ),
             ),
         )

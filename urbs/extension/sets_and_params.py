@@ -303,9 +303,7 @@ def apply_sets_and_params(m, data_urbsextensionv1):
     # Assuming wind is added to m.tech and further locations
     # P_sec initialization (price reduction)
     variation_14_updated = {
-        (n, tech, loc): (
-            value if tech in ["solarPV", "windon", "windoff"] else 0
-        )
+        (n, tech, loc): (value if tech in ["solarPV", "windon", "windoff"] else 0)
         for n, value in {
             0: 0,
             1: 46841.69972,

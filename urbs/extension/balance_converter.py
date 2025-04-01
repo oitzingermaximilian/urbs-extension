@@ -15,10 +15,10 @@ class ConvertTotalCapacityToBalance(AbstractConstraint):
             * m.lf_solar[timesteps_ext, stf, location, tech]
             * m.hours[timesteps_ext]
         )
-        #print(
+        # print(
         #    f"Debug: time = {timesteps_ext}, STF = {stf}, Location = {location}, Tech = {tech}"
-        #)
-        #print(f"Total Capacity to Balance (Solar) = {balance_value}")
+        # )
+        # print(f"Total Capacity to Balance (Solar) = {balance_value}")
         return m.balance_ext[timesteps_ext, stf, location, tech] == balance_value
 
 
@@ -29,10 +29,10 @@ class ConvertCapacity1Rule(AbstractConstraint):
             * m.lf_solar[timesteps_ext, stf, location, tech]  # Load factor
             * m.hours[timesteps_ext]  # Duration of the timestep in hours
         )
-        #print(
+        # print(
         #    f"Debug:time = {timesteps_ext}, STF = {stf}, Location = {location}, Tech = {tech}"
-        #)
-        #print(f"Total Balance (Imported Solar) = {balance_value}")
+        # )
+        # print(f"Total Balance (Imported Solar) = {balance_value}")
         return m.balance_import_ext[timesteps_ext, stf, location, tech] == balance_value
 
 
@@ -43,10 +43,10 @@ class ConvertCapacity2Rule(AbstractConstraint):
             * m.lf_solar[timesteps_ext, stf, location, tech]
             * m.hours[timesteps_ext]
         )
-        #print(
+        # print(
         #    f"Debug:time = {timesteps_ext}, STF = {stf}, Location = {location}, Tech = {tech}"
-        #)
-        #print(f"Total Balance (Stockout Solar) = {balance_value}")
+        # )
+        # print(f"Total Balance (Stockout Solar) = {balance_value}")
         return (
             m.balance_outofstock_ext[timesteps_ext, stf, location, tech]
             == balance_value
@@ -60,10 +60,10 @@ class ConvertCapacity3Rule(AbstractConstraint):
             * m.lf_solar[timesteps_ext, stf, location, tech]
             * m.hours[timesteps_ext]
         )
-        #print(
+        # print(
         #    f"Debug:time = {timesteps_ext}, STF = {stf}, Location = {location}, Tech = {tech}"
-        #)
-        #print(f"Total Balance (EU Primary Solar) = {balance_value}")
+        # )
+        # print(f"Total Balance (EU Primary Solar) = {balance_value}")
         return (
             m.balance_EU_primary_ext[timesteps_ext, stf, location, tech]
             == balance_value
@@ -77,10 +77,10 @@ class ConvertCapacity4Rule(AbstractConstraint):
             * m.lf_solar[timesteps_ext, stf, location, tech]
             * m.hours[timesteps_ext]
         )
-        #print(
+        # print(
         #    f"Debug:time = {timesteps_ext}, STF = {stf}, Location = {location}, Tech = {tech}"
-        #)
-        #print(f"Total Balance (EU Secondary Solar) = {balance_value}")
+        # )
+        # print(f"Total Balance (EU Secondary Solar) = {balance_value}")
         return (
             m.balance_EU_secondary_ext[timesteps_ext, stf, location, tech]
             == balance_value
