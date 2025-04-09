@@ -71,26 +71,14 @@ class capacity_scrap_dec_rule(AbstractConstraint):
 
 class capacity_scrap_rec_rule(AbstractConstraint):
     def apply_rule(self, m, stf, location, tech):
-        if tech == "solarPV":
-            return m.capacity_scrap_rec[stf, location, tech] == (
-                (m.f_mining[location, tech] / m.f_recycling[location, tech])
-                * m.capacity_ext_eusecondary[stf, location, tech]
-            )
-        elif tech in ["windon", "windoff"]:
-            return pyomo.Constraint.Skip
-        else:
-            return pyomo.Constraint.Skip
+        return m.capacity_scrap_rec[stf, location, tech] == (
+            (m.f_mining[location, tech] / m.f_recycling[location, tech])
+            * m.capacity_ext_eusecondary[stf, location, tech]
+        )
 
 
 class capacity_scrap_total_rule(AbstractConstraint):
     def apply_rule(self, m, stf, location, tech):
-        if tech in ["windon", "windoff"]:
-            if stf == m.y0:
-                return (
-                    m.capacity_scrap_total[stf, location, tech]
-                    == m.capacity_scrap_dec[stf, location, tech]
-                )
-
         if stf == m.y0:
             return (
                 m.capacity_scrap_total[stf, location, tech]
@@ -103,15 +91,6 @@ class capacity_scrap_total_rule(AbstractConstraint):
 
 class capacity_scrap_total_rule2(AbstractConstraint):
     def apply_rule(self, m, stf, location, tech):
-        if tech in ["windon", "windoff"]:
-            if stf == m.y0:
-                return pyomo.Constraint.Skip
-            else:
-                return (
-                    m.capacity_scrap_total[stf, location, tech]
-                    == m.capacity_scrap_total[stf - 1, location, tech]
-                    + m.capacity_scrap_dec[stf, location, tech]
-                )
         if stf == m.y0:
             return pyomo.Constraint.Skip
         else:
@@ -125,8 +104,6 @@ class capacity_scrap_total_rule2(AbstractConstraint):
 
 class cost_scrap_rule(AbstractConstraint):
     def apply_rule(self, m, stf, location, tech):
-        if tech in ["windon", "windoff"]:
-            return pyomo.Constraint.Skip
         return (
             m.cost_scrap[stf, location, tech]
             == m.f_scrap_rec[stf, location, tech]
@@ -170,8 +147,6 @@ class scrap_total_decrease_rule(AbstractConstraint):
 
 class scrap_recycling_increase_rule(AbstractConstraint):
     def apply_rule(self, m, stf, location, tech):
-        if tech in ["windon", "windoff"]:
-            return pyomo.Constraint.Skip
         if stf == m.y0:
             return pyomo.Constraint.Skip
         else:
