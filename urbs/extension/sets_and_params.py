@@ -14,8 +14,8 @@ def apply_sets_and_params(m, data_urbsextensionv1):
     )
     # Base sheet read in
     m.timesteps_ext = pyomo.Set(initialize=range(1, 13), doc="Timesteps")
-    m.y0 = pyomo.Param(initialize=base_params["y0"])  # Initial year
-    m.y_end = pyomo.Param(initialize=base_params["y_end"])  # End year
+    m.y0 = pyomo.Param(initialize=base_params["y0"], mutable=True)  # Initial year
+    m.y_end = pyomo.Param(initialize=base_params["y_end"], mutable=True)  # End year
     m.hours = pyomo.Param(
         m.timesteps_ext, initialize=base_params["hours"]
     )  # Hours per year

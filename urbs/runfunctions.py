@@ -58,20 +58,10 @@ def setup_solver(optim, logfile="solver.log"):
     return optim
 
 
-def run_scenario(
-    input_files,
-    Solver,
-    timesteps,
-    scenario,
-    result_dir,
-    dt,
-    objective,
-    plot_tuples=None,
-    plot_sites_name=None,
-    plot_periods=None,
-    report_tuples=None,
-    report_sites_name=None,
-):
+def run_scenario(input_files, Solver, timesteps, scenario, result_dir, dt, objective,
+                 plot_tuples=None, plot_sites_name=None, plot_periods=None,
+                 report_tuples=None, report_sites_name=None, initial_conditions=None,
+                 window_start=None, window_end=None,indexlist=None):
     """run an urbs model for given input, time steps and scenario
 
     Args:
@@ -90,6 +80,7 @@ def run_scenario(
           (c.f. urbs.report)
         - report_sites_name: (optional) dict of names for sites in
           report_tuples
+        - initial_conditions: Optional dictionary of initial conditions for carry-over values.
 
     Returns:
         the urbs model instance
@@ -103,48 +94,12 @@ def run_scenario(
     sce = scenario.__name__
     data = read_input(input_files, year)
 
-    ### --------start of urbs-solar input data addition-------- ###
+    print(f"\n--- Debugging run_scenario ---")
+    print(f"window_start: {window_start}, window_end: {window_end}")
+    print(f"indexlist: {indexlist}")
+    print("--------------------------\n")
 
-    location = "Params.xlsx"
 
-    def clean_and_convert(df):
-        """Clean and convert the Value column to float."""
-        df["Value"] = (
-            df["Value"]
-            .apply(lambda x: str(x).replace(" ", "").replace(",", "."))
-            .astype(float)
-        )
-        return df
-
-    dataframe_params = pd.read_excel(location, sheet_name="Params")
-    dataframe_params["Param"] = dataframe_params["Param"].str.strip()
-    param_dict = dict(zip(dataframe_params["Param"], dataframe_params["Value"]))
-
-    data_sheets = {
-        "importcost": "importcost_dict",
-        "instalable_capacity": "instalable_capacity_dict",
-        "eu_primary_cost": "eu_primary_cost_dict",
-        "eu_secondary_cost": "eu_secondary_cost_dict",
-        "dcr": "dcr_dict",
-        "stocklvl": "stocklvl_dict",
-    }
-
-    data_dicts = {}
-    for sheet, var_name in data_sheets.items():
-        df = clean_and_convert(pd.read_excel(location, sheet_name=sheet))
-        data_dicts[var_name] = (
-            dict(zip(df["Stf"], df["Value"]))
-            if "Stf" in df
-            else dict(zip(df["Param"], df["Value"]))
-        )
-    importcost_dict = data_dicts["importcost_dict"]
-    instalable_capacity_dict = data_dicts["instalable_capacity_dict"]
-    eu_primary_cost_dict = data_dicts["eu_primary_cost_dict"]
-    eu_secondary_cost_dict = data_dicts["eu_secondary_cost_dict"]
-    dcr_dict = data_dicts["dcr_dict"]
-    stocklvl_dict = data_dicts["stocklvl_dict"]
-
-    ### --------end of urbs-solar input data addition-------- ###
 
     ### --------start of urbs-extensionv1.0 input data addition-------- ###
 
@@ -414,11 +369,18 @@ def run_scenario(
     ### --------end of urbs-extensionv1.0 input data addition-------- ###
 
     data, data_urbsextensionv1 = scenario(data, data_urbsextensionv1.copy())
+
+    #print("DATA-extension:", data_urbsextensionv1)
     validate_input(data)
     validate_dc_objective(data, objective)
 
+    if window_start is not None and window_end is not None:
+        print(f"Filtering data for the window {window_start}–{window_end}")
+        data = slice_data_for_window(data, window_start, window_end)
+        data_urbsextensionv1 = sliced_dataurbsextensionv1(data_urbsextensionv1, window_start, window_end)
+
     # create model
-    prob = create_model(data, data_urbsextensionv1, dt, timesteps, objective)
+    prob = create_model(data, data_urbsextensionv1, dt, timesteps, objective, initial_conditions = initial_conditions, window_start = window_start,window_end = window_end,indexlist = indexlist)
 
     # prob_filename = os.path.join(result_dir, 'model.lp')
     # prob.write(prob_filename, io_options={'symbolic_solver_labels':True})
@@ -512,3 +474,162 @@ def run_scenario(
     )
 
     return prob
+
+
+def slice_data_for_window(data, window_start, window_end):
+    """
+    Slice the input data dictionary for the specified rolling horizon window.
+    Ensure rows outside the `window_start` and `window_end` range are removed.
+    Handle cases where only specific columns (e.g., `cap-up`) have values.
+    """
+    sliced_data = {}
+
+    for key, value in data.items():
+        print(f"\nProcessing key: {key}")
+        if isinstance(value, pd.DataFrame):
+            if 'support_timeframe' in value.index.names:
+                # Sort the MultiIndex to avoid UnsortedIndexError
+                value = value.sort_index()
+
+                # Slicing by index
+                print("Slicing by index...")
+                sliced_df = value.loc[window_start:window_end]
+            else:
+                print(f"Warning: `support_timeframe` not found in index for '{key}'. Skipping slicing.")
+                sliced_data[key] = value
+                continue
+
+            # Special handling for `process`: drop rows with only `cap-up` containing values
+            if key == 'process':
+                sliced_df = sliced_df[sliced_df.drop(columns=['cap-up'], errors='ignore').notna().any(axis=1)]
+
+            # Assign weight = 1 for the last year in the rolling horizon if missing
+            # Assign weight = 1 as a row for the last year in the rolling horizon
+            if key == 'global_prop':  # Adjust this key if needed
+                # Ensure Weight is added as a property for the last year (window_end)
+                if ('Weight' not in sliced_df.index.get_level_values('Property')) and (
+                        window_end in sliced_df.index.get_level_values('support_timeframe')):
+                    # Create a new row for 'Weight' at the window_end year
+                    new_row = pd.DataFrame(
+                        {'value': [1]},  # Set Weight to 1
+                        index=pd.MultiIndex.from_tuples([(window_end, 'Weight')], names=sliced_df.index.names)
+                    )
+                    # Append the new row to the DataFrame
+                    sliced_df = pd.concat([sliced_df, new_row])
+
+            # Debug: Print the resulting DataFrame for verification
+            print(f"Sliced DataFrame for '{key}':\n{sliced_df}")
+
+            # Add the sliced DataFrame back to the dictionary
+            sliced_data[key] = sliced_df
+        else:
+            # If the value is not a DataFrame, keep it as is
+            sliced_data[key] = value
+
+    return sliced_data
+
+def sliced_dataurbsextensionv1(data_urbsextensionv1, window_start, window_end):
+    """
+    Update the DATA-extension dictionary for the current rolling horizon window.
+
+    Args:
+        data_urbsextensionv1 (dict): The original DATA-extension dictionary.
+        window_start (int): Start year of the rolling horizon window.
+        window_end (int): End year of the rolling horizon window.
+
+    Returns:
+        dict: The updated DATA-extension dictionary.
+    """
+    # Update the base_params to reflect the current rolling horizon window
+    data_urbsextensionv1['base_params']['y0'] = window_start
+    data_urbsextensionv1['base_params']['y_end'] = window_end
+
+    # Filter each dictionary based on the rolling horizon window
+    data_urbsextensionv1['importcost_dict'] = {
+        key: value
+        for key, value in data_urbsextensionv1['importcost_dict'].items()
+        if window_start <= key[0] <= window_end
+    }
+    data_urbsextensionv1['manufacturingcost_dict'] = {
+        key: value
+        for key, value in data_urbsextensionv1['manufacturingcost_dict'].items()
+        if window_start <= key[0] <= window_end
+    }
+    data_urbsextensionv1['remanufacturingcost_dict'] = {
+        key: value
+        for key, value in data_urbsextensionv1['remanufacturingcost_dict'].items()
+        if window_start <= key[0] <= window_end
+    }
+    data_urbsextensionv1['recyclingcost_dict'] = {
+        key: value
+        for key, value in data_urbsextensionv1['recyclingcost_dict'].items()
+        if window_start <= key[0] <= window_end
+    }
+    data_urbsextensionv1['loadfactors_dict'] = {
+        key: value
+        for key, value in data_urbsextensionv1['loadfactors_dict'].items()
+        if window_start <= key[1] <= window_end
+    }
+    data_urbsextensionv1['dcr_dict'] = {
+        key: value
+        for key, value in data_urbsextensionv1['dcr_dict'].items()
+        if window_start <= key[0] <= window_end
+    }
+    data_urbsextensionv1['stocklvl_dict'] = {
+        key: value
+        for key, value in data_urbsextensionv1['stocklvl_dict'].items()
+        if window_start <= key[0] <= window_end
+    }
+
+    data_urbsextensionv1['installable_capacity_dict'] = {
+        key: value
+        for key, value in data_urbsextensionv1['installable_capacity_dict'].items()
+        if window_start <= key[0] <= window_end
+    }
+    # Debug: Print updated data for verification
+    print("\n--- Debugging sliced_dataurbsextensionv1 ---")
+    print("Base Params (y0, y_end):", data_urbsextensionv1['base_params'])
+    print("Sample importcost_dict entries:")
+    for i, (k, v) in enumerate(data_urbsextensionv1['importcost_dict'].items()):
+        print(f"  {k}: {v}")
+        if i >= 4:  # Print only the first 5 entries
+            break
+    print("Sample manufacturingcost_dict entries:")
+    for i, (k, v) in enumerate(data_urbsextensionv1['manufacturingcost_dict'].items()):
+        print(f"  {k}: {v}")
+        if i >= 4:
+            break
+    print("Sample remanufacturingcost_dict entries:")
+    for i, (k, v) in enumerate(data_urbsextensionv1['remanufacturingcost_dict'].items()):
+        print(f"  {k}: {v}")
+        if i >= 4:
+            break
+    print("Sample recyclingcost_dict entries:")
+    for i, (k, v) in enumerate(data_urbsextensionv1['recyclingcost_dict'].items()):
+        print(f"  {k}: {v}")
+        if i >= 4:
+            break
+    print("Sample loadfactors_dict entries:")
+    for i, (k, v) in enumerate(data_urbsextensionv1['loadfactors_dict'].items()):
+        print(f"  {k}: {v}")
+        if i >= 4:
+            break
+    print("Sample dcr_dict entries:")
+    for i, (k, v) in enumerate(data_urbsextensionv1['dcr_dict'].items()):
+        print(f"  {k}: {v}")
+        if i >= 4:
+            break
+    print("Sample stocklvl_dict entries:")
+    for i, (k, v) in enumerate(data_urbsextensionv1['stocklvl_dict'].items()):
+        print(f"  {k}: {v}")
+        if i >= 4:
+            break
+    print("Sample instalable capacity entries:")
+    for i, (k, v) in enumerate(data_urbsextensionv1['installable_capacity_dict'].items()):
+        print(f"  {k}: {v}")
+        if i >= 4:
+            break
+    print("--- End Debugging ---\n")
+
+    # Return the updated data
+    return data_urbsextensionv1

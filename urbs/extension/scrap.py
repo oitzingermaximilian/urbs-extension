@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 import pyomo.core as pyomo
-
+from pyomo.environ import value
 
 class AbstractConstraint(ABC):
     @abstractmethod
@@ -32,7 +32,7 @@ class decommissioned_capacity_rule(AbstractConstraint):
         else:
             _exogenous = 2 * 1000
 
-        if stf - m.l[location, tech] >= m.y0:
+        if stf - m.l[location, tech] >= value(m.y0):
             return (
                 m.capacity_dec[stf, location, tech]
                 == m.capacity_ext_new[stf - m.l[location, tech], location, tech]
@@ -79,7 +79,7 @@ class capacity_scrap_rec_rule(AbstractConstraint):
 
 class capacity_scrap_total_rule(AbstractConstraint):
     def apply_rule(self, m, stf, location, tech):
-        if stf == m.y0:
+        if stf == value(m.y0):
             return (
                 m.capacity_scrap_total[stf, location, tech]
                 == m.capacity_scrap_dec[stf, location, tech]
@@ -91,7 +91,7 @@ class capacity_scrap_total_rule(AbstractConstraint):
 
 class capacity_scrap_total_rule2(AbstractConstraint):
     def apply_rule(self, m, stf, location, tech):
-        if stf == m.y0:
+        if stf == value(m.y0):
             return pyomo.Constraint.Skip
         else:
             return (
@@ -147,7 +147,7 @@ class scrap_total_decrease_rule(AbstractConstraint):
 
 class scrap_recycling_increase_rule(AbstractConstraint):
     def apply_rule(self, m, stf, location, tech):
-        if stf == m.y0:
+        if stf == value(m.y0):
             return pyomo.Constraint.Skip
         else:
             lhs = (

@@ -17,7 +17,8 @@ from urbs.extension import (
 
 
 def create_model(
-    data, data_urbsextensionv1, dt=8760, timesteps=None, objective="cost", dual=None
+    data, data_urbsextensionv1, dt=8760, timesteps=None, objective="cost", dual=None,initial_conditions=None,
+    indexlist=None, window_start=None, window_end=None
 ):
     """Create a pyomo ConcreteModel urbs object from given input data.
 
@@ -29,6 +30,7 @@ def create_model(
           default: "cost"
         - dual: set True to add dual variables to model output
           (marginally slower), default: True
+        - initial_conditions: Optional dictionary of initial conditions for carry-over values.
 
     Returns:
         a pyomo ConcreteModel object
@@ -38,10 +40,16 @@ def create_model(
     if not timesteps:
         timesteps = data["demand"].index.tolist()
 
-    m = pyomo_model_prep(data, timesteps)  # preparing pyomo model
+    m = pyomo_model_prep(data, timesteps,window_start,window_end)  # preparing pyomo model
     m.name = "urbs"
     m.created = datetime.now().strftime("%Y%m%dT%H%M")
     m._data = data
+
+    # Apply initial conditions if provided
+    if initial_conditions:
+        for param, values in initial_conditions.items():
+            for key, value in values.items():
+                getattr(m, param)[key] = value  # Update Pyomo model parameters
 
     # Parameters
 
@@ -107,6 +115,10 @@ def create_model(
         ordered=True,
         doc="Set of modeled support timeframes (e.g. years)",
     )
+
+    print("\n--- Debugging m.stf ---")
+    print("m.stf (support timeframes):", list(m.stf))
+    print("--------------------------\n")
 
     # site (e.g. north, middle, south...)
 
@@ -206,7 +218,12 @@ def create_model(
         initialize=tuple(m.proc_area_dict.keys()),
         doc="Processes and Sites with area Restriction",
     )
-
+    print("--- Debugging Pyomo Sets ---")
+    print(f"stf (timeframes): {list(m.stf)}")
+    print(f"sit (sites): {list(m.sit)}")
+    print(f"pro (processes): {list(m.pro)}")
+    print(f"com (commodities): {list(m.com)}")
+    print("----------------------------")
     # process input/output
     m.pro_input_tuples = pyomo.Set(
         within=m.stf * m.sit * m.pro * m.com,
@@ -352,6 +369,8 @@ def create_model(
     # m.best_estimate_TYNDP2040 = pyomo.Constraint(m.stf, rule=best_estimate_TYNDP2040_rule)
     # m.best_estimate_TYNDP2050 = pyomo.Constraint(m.stf, rule=best_estimate_TYNDP2050_rule)
     # m.minimum_stock_level = pyomo.Constraint(m.stf, rule=minimum_stock_level_rule)
+
+
 
     ####################################################################################################################
     ####################################################################################################################

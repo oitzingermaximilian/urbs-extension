@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 import pyomo.core as pyomo
-
+from pyomo.environ import value
 
 class AbstractConstraint(ABC):
     @abstractmethod
@@ -96,7 +96,7 @@ class relation_pnew_to_pprior_constraint_sec(AbstractConstraint):
             prior time step's price reductions, or skips the constraint for the first
             time step.
         """
-        if stf == m.y0:
+        if stf == value(m.y0):
             # Skip for the first time step
             return pyomo.Constraint.Skip
         else:

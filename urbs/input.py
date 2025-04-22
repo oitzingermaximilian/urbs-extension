@@ -194,7 +194,7 @@ def read_input(input_files, year):
 
 
 # preparing the pyomo model
-def pyomo_model_prep(data, timesteps):
+def pyomo_model_prep(data, timesteps, window_start, window_end):
     """Performs calculations on the data frames in dictionary "data" for
     further usage by the model.
 
@@ -207,7 +207,9 @@ def pyomo_model_prep(data, timesteps):
     """
 
     m = pyomo.ConcreteModel()
-
+    print(f"\n--- Debugging pyomo_model_prep ---")
+    print(f"window_start: {window_start}, window_end: {window_end}")
+    print("--------------------------\n")
     # Preparations
     # ============
     # Data import. Syntax to access a value within equation definitions looks
@@ -215,6 +217,36 @@ def pyomo_model_prep(data, timesteps):
     #
     #     storage.loc[site, storage, commodity][attribute]
     #
+    # Dynamically filter global_prop for rolling horizon
+    if window_start is not None and window_end is not None:
+        valid_timeframes = range(window_start, window_end + 1)
+        data["global_prop"] = data["global_prop"][
+            data["global_prop"].index.get_level_values(0).isin(valid_timeframes)
+        ]
+
+        # Reset the index to remove unused levels
+        data["global_prop"] = data["global_prop"].copy()  # Important: Avoid chained indexing warnings
+        data["global_prop"].index = data["global_prop"].index.remove_unused_levels()
+
+        print("\n--- Rolling Horizon Mode in pyomo_model_prep ---")
+        print(f"Window: {window_start} to {window_end}")
+        print("Filtered global_prop:")
+        print(data["global_prop"])
+        print("--------------------------\n")
+    else:
+        print("\n--- Perfect Foresight Mode in pyomo_model_prep ---")
+        print("Using full global_prop without slicing.")
+        print("--------------------------\n")
+
+    # Prepare stf_list based on the filtered or full global_prop
+    m.stf_list = data["global_prop"].index.levels[0].tolist()
+
+    print(data["global_prop"].index.levels[0].tolist())
+
+    # Assign other model-related properties
+    m.timesteps = timesteps
+    m.global_prop = data["global_prop"]
+
 
     m.mode = identify_mode(data)
     m.timesteps = timesteps
@@ -227,6 +259,9 @@ def pyomo_model_prep(data, timesteps):
 
     # create list with all support timeframe values
     m.stf_list = m.global_prop.index.levels[0].tolist()
+    print("\n--- Debugging m.global_prop.index.levels[0] ---")
+    print("All levels in m.global_prop:", m.global_prop.index.levels[0].tolist())
+    print("--------------------------\n")
     # creating list wih cost types
     ##TODO: solar cost type list
     m.cost_type_list = ["Invest", "Fixed", "Variable", "Fuel", "Environmental"]
@@ -390,6 +425,8 @@ def pyomo_model_prep(data, timesteps):
 
         # Derive multiplier for all energy based costs
         commodity["stf_dist"] = commodity["support_timeframe"].apply(stf_dist, m=m)
+
+
         commodity["discount-factor"] = commodity["support_timeframe"].apply(
             discount_factor, m=m
         )

@@ -108,46 +108,96 @@ def run_perfect_foresight():
 
 def run_rolling_horizon(window_length=5):
     """Rolling horizon implementation"""
-    total_years = 26  # 2025-2050
-    windows = [(2025 + i, 2025 + i + window_length)
-               for i in range(0, total_years, window_length)]
+    for scenario in scenarios:
+        total_years = 27  # 2024–2050
+        windows = [(2024 + i, 2024 + i + window_length - 1) for i in range(0, total_years, window_length)]
 
-    # Initialize carry-over variables
-    carry_over = {
-        'stockpile': 40,  # Initial stockpile (GW)
-        'cumulative_rem': 0,  # Cumulative remanufacturing capacity
-    }
-
-    for i, (window_start, window_end) in enumerate(windows):
-        print(f"\nRunning window {i + 1}/{len(windows)}: {window_start}-{window_end}")
-
-        # Modify scenario with window-specific parameters
-        window_scenario = scenarios[0].copy()  # Use a copy of the base scenario
-        window_scenario['window'] = (window_start, window_end)
-        window_scenario.update(carry_over)
-
-        # Run the model for this window
-        prob = urbs.run_scenario(
-            input_path,
-            solver,
-            timesteps,
-            window_scenario,
-            os.path.join(result_dir, f"window_{window_start}_{window_end}"),
-            dt,
-            objective,
-            plot_tuples=plot_tuples,
-            plot_sites_name=plot_sites_name,
-            plot_periods=plot_periods,
-            report_tuples=report_tuples,
-            report_sites_name=report_sites_name,
-        )
-
-        # Update carry-over variables for next window
+        # Initialize carry-over variables
         carry_over = {
-            'stockpile': prob.get_stockpile_level(window_end),
-            'cumulative_rem': carry_over['cumulative_rem'] +
-                              prob.get_cumulative_rem_capacity(window_start, window_end),
+            'Installed_Capacity_Q_s': {},
+            'Existing_Stock_Q_stock': {},
+            'capacity_dec_start': {},
+            'cap_pro': {}
         }
+
+        # Define locations and technologies (replace with actual model data)
+        locations = ["EU27"]  # Example; replace with actual locations TODO fix hardcode
+        technologies = ["solarPV", "windon", "windoff"]  # Example; replace with actual technologies TODO fix hardcode
+        techs = ['Biomass Plant', 'Coal CCUS', 'Coal Lignite', 'Coal Lignite CCUS', 'Coal Plant', 'Gas Plant (CCGT)', 'Gas Plant (CCGT) CCUS', 'Hydro (reservoir)', 'Hydro (run-of-river)', 'Nuclear Plant', 'Wind (offshore)', 'Wind (onshore)'] # TODO fix hardcode
+
+        for i, (window_start, window_end) in enumerate(windows):
+            print(f"\nRunning window {i + 1}/{len(windows)}: {window_start}-{window_end}")
+
+            # Create the result directory for the current window
+            window_result_dir = os.path.join(result_dir, f"window_{window_start}_{window_end}")
+            os.makedirs(window_result_dir, exist_ok=True)
+
+            # Generate the indexlist for the current rolling horizon window
+            indexlist = list(range(window_start, window_end + 1))
+            print(f"Rolling horizon: {window_start} - {window_end}")
+            print(f"Indexlist (stf): {indexlist}")
+
+            # Define timesteps for the current window
+            window_start_timestep = (window_start - 2024) * 12  # Assuming monthly timesteps starting at 2024
+            window_end_timestep = (window_end - 2024 + 1) * 12
+            timesteps = range(window_start_timestep, window_end_timestep)
+
+            # Apply carry-over initial conditions
+            initial_conditions = carry_over if i > 0 else None
+
+            # Pass rolling horizon parameters to urbs.run_scenario
+            prob = urbs.run_scenario(
+                input_path,
+                solver,
+                timesteps,
+                scenario,
+                window_result_dir,
+                dt,
+                objective,
+                plot_tuples=plot_tuples,
+                plot_sites_name=plot_sites_name,
+                plot_periods={"all": timesteps},
+                report_tuples=report_tuples,
+                report_sites_name=report_sites_name,
+                initial_conditions=initial_conditions,
+                window_start=window_start,  # Pass window start
+                window_end=window_end,      # Pass window end
+                indexlist=indexlist,         # Pass indexlist for stf filtering
+            )
+
+            # Debugging output
+            print(type(prob))
+            print(dir(prob))
+            prob.stf.initialize = list(range(window_start, window_end + 1))
+            print(f"Updated stf for Rolling Horizon: {list(prob.stf)}")  # Debugging output
+            prob.y0 = window_start
+
+            # Extract results for carry-over
+            last_year = window_end
+            carry_over['cap_pro'] = {
+                (sit, pro): prob.process_dict["inst-cap"][(last_year, sit, pro)].value
+                for sit in locations
+                for pro in techs
+                if (sit, pro, last_year) in prob.pro_const_cap_dict
+            }
+
+            carry_over = {
+                'Installed_Capacity_Q_s': {
+                    (loc, tech): prob.capacity_ext[last_year, loc, tech].value
+                    for loc in locations
+                    for tech in technologies
+                },
+                'Existing_Stock_Q_stock': {
+                    (loc, tech): prob.capacity_ext_stock[last_year, loc, tech].value
+                    for loc in locations
+                    for tech in technologies
+                },
+                'capacity_dec_start': {
+                    (loc, tech): prob.capacity_dec[last_year, loc, tech].value
+                    for loc in locations
+                    for tech in technologies
+                }
+            }
 
 
 # Execute selected mode
@@ -159,3 +209,32 @@ else:
     run_rolling_horizon(window_length=args.window)
 
 print("\nSimulation completed successfully!")
+
+
+def read_carry_over_from_excel(result_path, scenario_name):
+    """Extract carry-over values from the result Excel of the previous window."""
+    filepath = os.path.join(result_path, f"{scenario_name}.xlsx")
+
+    # Read relevant sheets (update sheet names if needed!)
+    cap_sheet = pd.read_excel(filepath, sheet_name="extension_total_caps")
+    stock_sheet = pd.read_excel(filepath, sheet_name="Stock_Capacity")
+    dec_sheet = pd.read_excel(filepath, sheet_name="decom")
+
+    # Extract only the last timestep
+    last_timestep = cap_sheet['stf'].max()
+
+    cap_last = cap_sheet[cap_sheet['stf'] == last_timestep]
+    stock_last = stock_sheet[stock_sheet['stf'] == last_timestep]
+    dec_last = dec_sheet[dec_sheet['stf'] == last_timestep]
+
+    # Transform into dictionary format
+    cap_dict = {(row['sit'], row['pro']): row['cap_pro'] for _, row in cap_last.iterrows()}
+    stock_dict = {(row['location'], row['tech']): row['capacity_ext_stock'] for _, row in stock_last.iterrows()}
+    dec_dict = {(row['location'], row['tech']): row['capacity_dec'] for _, row in dec_last.iterrows()}
+
+    return {
+        'Installed_Capacity_Q_s': cap_dict,
+        'Existing_Stock_Q_stock': stock_dict,
+        'capacity_dec_start': dec_dict,
+        # optionally add 'cap_pro' if it's also stored
+    }
