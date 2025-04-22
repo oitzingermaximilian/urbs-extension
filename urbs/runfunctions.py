@@ -333,7 +333,7 @@ def run_scenario(
             for (year, timestep), value in sheet_data[col].items():
                 # Store the value in the dictionary as (timestep, year, location, technology) : load factor value
                 loadfactors_dict[(timestep, year, location, tech)] = value
-        print(loadfactors_dict)
+        #print(loadfactors_dict)
         return loadfactors_dict
 
     def load_data_from_excel(file_path):
@@ -374,7 +374,7 @@ def run_scenario(
 
         # Process the locations sheet: Extract non-empty values from the "Locations" column
         locations_list = locations_data.iloc[:, 0].dropna().tolist()
-        print(locations_list)
+        #print(locations_list)
 
         # Process the cost sheet into import, manufacturing, and remanufacturing cost dicts
         (
@@ -405,11 +405,11 @@ def run_scenario(
     data_urbsextensionv1 = load_data_from_excel(
         "Input_urbsextensionv1.xlsx"
     )  # Replace with your actual file path
-    print("Technologies Dictionary:", data_urbsextensionv1["technologies"])
-    print(
-        "Instalable Capacity Dictionary:",
-        data_urbsextensionv1["installable_capacity_dict"],
-    )
+    #print("Technologies Dictionary:", data_urbsextensionv1["technologies"])
+    #print(
+    #    "Instalable Capacity Dictionary:",
+    #    data_urbsextensionv1["installable_capacity_dict"],
+    #)
 
     ### --------end of urbs-extensionv1.0 input data addition-------- ###
 

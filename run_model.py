@@ -1,53 +1,46 @@
 import os
 import shutil
+import argparse
 import urbs
 from datetime import date
 
-input_files = "urbs_intertemporal_2050"  # for single year file name, for intertemporal folder name
+# Add command-line argument parsing
+parser = argparse.ArgumentParser(description='Run URBS model in different optimization modes.')
+parser.add_argument('--mode', choices=['perfect', 'rolling'], default='perfect',
+                   help='Optimization mode: "perfect" (default) or "rolling" horizon')
+parser.add_argument('--window', type=int, default=5,
+                   help='Rolling horizon window length in years (default: 5)')
+args = parser.parse_args()
+
+# Original setup (unchanged)
+input_files = "urbs_intertemporal_2050"
 input_dir = "Input"
 input_path = os.path.join(input_dir, input_files)
 
 result_name = "urbs"
-result_dir = urbs.prepare_result_directory(result_name)  # name + time stamp
-
-# get year
+result_dir = urbs.prepare_result_directory(result_name)
 year = date.today().year
 
-# copy input file to result directory
+# Copy input/run files to result directory
 try:
     shutil.copytree(input_path, os.path.join(result_dir, input_dir))
 except NotADirectoryError:
     shutil.copyfile(input_path, os.path.join(result_dir, input_files))
-# copy run file to result directory
 shutil.copy(__file__, result_dir)
 
-# objective function
-objective = "cost"  # set either 'cost' or 'CO2' as objective
-
-# Choose Solver (cplex, glpk, gurobi, ...)
+# Configuration (unchanged)
+objective = "cost"
 solver = "gurobi"
-
-# simulation timesteps
-(offset, length) = (0, 12)  # time step selection
+(offset, length) = (0, 12)
 timesteps = range(offset, offset + length + 1)
-dt = 730  # length of each time step (unit: hours)
+dt = 730
 
-# detailed reporting commodity/sites
+# Reporting/plotting setup (unchanged)
 report_tuples = []
-
-# optional: define names for sites in report_tuples
 report_sites_name = {("EU27"): "All"}
-
-# plotting commodities/sites
 plot_tuples = []
-
-# optional: define names for sites in plot_tuples
 plot_sites_name = {("EU27"): "All"}
-
-# plotting timesteps
 plot_periods = {"all": timesteps[1:]}
-
-# add or change plot colors
 my_colors = {"EU27": (200, 230, 200)}
 for country, color in my_colors.items():
     urbs.COLORS[country] = color
@@ -94,18 +87,75 @@ scenarios = [
 ]
 
 
-for scenario in scenarios:
-    prob = urbs.run_scenario(
-        input_path,
-        solver,
-        timesteps,
-        scenario,
-        result_dir,
-        dt,
-        objective,
-        plot_tuples=plot_tuples,
-        plot_sites_name=plot_sites_name,
-        plot_periods=plot_periods,
-        report_tuples=report_tuples,
-        report_sites_name=report_sites_name,
-    )
+def run_perfect_foresight():
+    """Original perfect foresight execution"""
+    for scenario in scenarios:
+        prob = urbs.run_scenario(
+            input_path,
+            solver,
+            timesteps,
+            scenario,
+            result_dir,
+            dt,
+            objective,
+            plot_tuples=plot_tuples,
+            plot_sites_name=plot_sites_name,
+            plot_periods=plot_periods,
+            report_tuples=report_tuples,
+            report_sites_name=report_sites_name,
+        )
+
+
+def run_rolling_horizon(window_length=5):
+    """Rolling horizon implementation"""
+    total_years = 26  # 2025-2050
+    windows = [(2025 + i, 2025 + i + window_length)
+               for i in range(0, total_years, window_length)]
+
+    # Initialize carry-over variables
+    carry_over = {
+        'stockpile': 40,  # Initial stockpile (GW)
+        'cumulative_rem': 0,  # Cumulative remanufacturing capacity
+    }
+
+    for i, (window_start, window_end) in enumerate(windows):
+        print(f"\nRunning window {i + 1}/{len(windows)}: {window_start}-{window_end}")
+
+        # Modify scenario with window-specific parameters
+        window_scenario = scenarios[0].copy()  # Use a copy of the base scenario
+        window_scenario['window'] = (window_start, window_end)
+        window_scenario.update(carry_over)
+
+        # Run the model for this window
+        prob = urbs.run_scenario(
+            input_path,
+            solver,
+            timesteps,
+            window_scenario,
+            os.path.join(result_dir, f"window_{window_start}_{window_end}"),
+            dt,
+            objective,
+            plot_tuples=plot_tuples,
+            plot_sites_name=plot_sites_name,
+            plot_periods=plot_periods,
+            report_tuples=report_tuples,
+            report_sites_name=report_sites_name,
+        )
+
+        # Update carry-over variables for next window
+        carry_over = {
+            'stockpile': prob.get_stockpile_level(window_end),
+            'cumulative_rem': carry_over['cumulative_rem'] +
+                              prob.get_cumulative_rem_capacity(window_start, window_end),
+        }
+
+
+# Execute selected mode
+if args.mode == 'perfect':
+    print("Running in perfect foresight mode")
+    run_perfect_foresight()
+else:
+    print(f"Running in rolling horizon mode (window={args.window} years)")
+    run_rolling_horizon(window_length=args.window)
+
+print("\nSimulation completed successfully!")
