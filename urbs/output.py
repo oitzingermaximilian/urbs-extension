@@ -34,7 +34,7 @@ def get_constants(instance):
 
     costs = get_entity(instance, "costs")
     cpro = get_entities(instance, ["cap_pro", "cap_pro_new"])
-    #print("cpro", cpro)
+    # print("cpro", cpro)
     ctra = get_entities(instance, ["cap_tra", "cap_tra_new"])
     csto = get_entities(
         instance, ["cap_sto_c", "cap_sto_c_new", "cap_sto_p", "cap_sto_p_new"]
@@ -63,9 +63,9 @@ def get_constants(instance):
     ####Gather all relevant urbs-ext df's
 
     process_cost = get_entity(instance, "process_costs")
-    #print("process cost", process_cost)
+    # print("process cost", process_cost)
     ext_costs = get_entity(instance, "costs_new")
-    #print("ext_cost", ext_costs)
+    # print("ext_cost", ext_costs)
     cext = get_entities(
         instance,
         [
@@ -77,9 +77,9 @@ def get_constants(instance):
             "capacity_ext_stock_imported",
         ],
     )
-    #print("cext", cext)
+    # print("cext", cext)
     bext = get_entity(instance, "balance_ext")
-    #print("bext", bext)
+    # print("bext", bext)
     yearly_cost_ext = get_entities(
         instance,
         [
@@ -89,11 +89,11 @@ def get_constants(instance):
             "costs_EU_secondary",
         ],
     )
-    #print("yearly ext cost", yearly_cost_ext)
+    # print("yearly ext cost", yearly_cost_ext)
     capacity_ext_total = get_entity(instance, "capacity_ext")
-    #print("capacity ext total", capacity_ext_total)
+    # print("capacity ext total", capacity_ext_total)
     e_pro_out_df = get_entity(instance, "e_pro_out")
-    #print("e pro out df", e_pro_out_df)
+    # print("e pro out df", e_pro_out_df)
     scrapdf = get_entity(instance, "capacity_scrap_total")
     decomdf = get_entity(instance, "capacity_dec")
 
@@ -188,7 +188,7 @@ def get_constants(instance):
     combined_balance = combined_balance[["Timestep", "Stf", "Site", "Process", "Value"]]
 
     # Display the final DataFrame
-    #print(combined_balance)
+    # print(combined_balance)
 
     ####extension_cost
     df_process = pd.DataFrame(process_cost)
@@ -267,7 +267,7 @@ def get_constants(instance):
     new_rows = merged_capacity[~merged_capacity.index.isin(cpro.index)]
     updated_cpro = pd.concat([cpro, new_rows]).sort_index()
     # Display the final updated dataframe
-    #print(updated_cpro)
+    # print(updated_cpro)
     ########################################################################################################################
 
     if not ctra.empty:

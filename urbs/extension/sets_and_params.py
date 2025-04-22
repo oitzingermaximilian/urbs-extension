@@ -352,7 +352,7 @@ def apply_sets_and_params(m, data_urbsextensionv1):
                         5: 1000000,
                         6: 10000000,
                     }.get(n, 0)  # Default to 0 for other steps
-    #print(capacity_init_values)
+    # print(capacity_init_values)
 
     # Now initialize the Param with the dictionary
     m.capacityperstep_sec = pyomo.Param(

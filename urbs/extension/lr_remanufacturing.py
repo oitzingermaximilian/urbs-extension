@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 import pyomo.core as pyomo
 from pyomo.environ import value
 
+
 class AbstractConstraint(ABC):
     @abstractmethod
     def apply_rule(self, m, *args):

@@ -17,8 +17,16 @@ from urbs.extension import (
 
 
 def create_model(
-    data, data_urbsextensionv1, dt=8760, timesteps=None, objective="cost", dual=None,initial_conditions=None,
-    indexlist=None, window_start=None, window_end=None
+    data,
+    data_urbsextensionv1,
+    dt=8760,
+    timesteps=None,
+    objective="cost",
+    dual=None,
+    initial_conditions=None,
+    indexlist=None,
+    window_start=None,
+    window_end=None,
 ):
     """Create a pyomo ConcreteModel urbs object from given input data.
 
@@ -40,7 +48,9 @@ def create_model(
     if not timesteps:
         timesteps = data["demand"].index.tolist()
 
-    m = pyomo_model_prep(data, timesteps,window_start,window_end)  # preparing pyomo model
+    m = pyomo_model_prep(
+        data, timesteps, window_start, window_end
+    )  # preparing pyomo model
     m.name = "urbs"
     m.created = datetime.now().strftime("%Y%m%dT%H%M")
     m._data = data
@@ -363,8 +373,6 @@ def create_model(
     # m.best_estimate_TYNDP2040 = pyomo.Constraint(m.stf, rule=best_estimate_TYNDP2040_rule)
     # m.best_estimate_TYNDP2050 = pyomo.Constraint(m.stf, rule=best_estimate_TYNDP2050_rule)
     # m.minimum_stock_level = pyomo.Constraint(m.stf, rule=minimum_stock_level_rule)
-
-
 
     ####################################################################################################################
     ####################################################################################################################

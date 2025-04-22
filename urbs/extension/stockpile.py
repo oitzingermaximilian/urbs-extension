@@ -15,10 +15,10 @@ class CapacityExtGrowthRule(AbstractConstraint):
             return pyomo.Constraint.Skip
         else:
             return (
-                    m.capacity_ext[stf, location, tech]
-                    == m.capacity_ext[stf - 1, location, tech]
-                    + m.capacity_ext_new[stf, location, tech]
-                    - m.capacity_dec[stf, location, tech]
+                m.capacity_ext[stf, location, tech]
+                == m.capacity_ext[stf - 1, location, tech]
+                + m.capacity_ext_new[stf, location, tech]
+                - m.capacity_dec[stf, location, tech]
             )
 
 
@@ -32,7 +32,7 @@ class InitialCapacityRule(AbstractConstraint):
                 - m.capacity_dec[stf, location, tech]
             )
             print(
-            f"Initial Capacity for {tech} at {location} in year {stf}: {capacity_eq1}"
+                f"Initial Capacity for {tech} at {location} in year {stf}: {capacity_eq1}"
             )
             return capacity_eq1
         else:

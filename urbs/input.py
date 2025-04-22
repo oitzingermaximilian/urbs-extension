@@ -225,7 +225,9 @@ def pyomo_model_prep(data, timesteps, window_start, window_end):
         ]
 
         # Reset the index to remove unused levels
-        data["global_prop"] = data["global_prop"].copy()  # Important: Avoid chained indexing warnings
+        data["global_prop"] = data[
+            "global_prop"
+        ].copy()  # Important: Avoid chained indexing warnings
         data["global_prop"].index = data["global_prop"].index.remove_unused_levels()
 
         print("\n--- Rolling Horizon Mode in pyomo_model_prep ---")
@@ -246,7 +248,6 @@ def pyomo_model_prep(data, timesteps, window_start, window_end):
     # Assign other model-related properties
     m.timesteps = timesteps
     m.global_prop = data["global_prop"]
-
 
     m.mode = identify_mode(data)
     m.timesteps = timesteps
@@ -425,7 +426,6 @@ def pyomo_model_prep(data, timesteps, window_start, window_end):
 
         # Derive multiplier for all energy based costs
         commodity["stf_dist"] = commodity["support_timeframe"].apply(stf_dist, m=m)
-
 
         commodity["discount-factor"] = commodity["support_timeframe"].apply(
             discount_factor, m=m

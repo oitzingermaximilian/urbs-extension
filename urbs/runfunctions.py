@@ -58,10 +58,26 @@ def setup_solver(optim, logfile="solver.log"):
     return optim
 
 
-def run_scenario(input_files, Solver, timesteps, scenario, result_dir, dt, objective,
-                 plot_tuples=None, plot_sites_name=None, plot_periods=None,
-                 report_tuples=None, report_sites_name=None, initial_conditions=None,
-                 window_start=None, window_end=None,indexlist=None,windows=None, window_length=None):
+def run_scenario(
+    input_files,
+    Solver,
+    timesteps,
+    scenario,
+    result_dir,
+    dt,
+    objective,
+    plot_tuples=None,
+    plot_sites_name=None,
+    plot_periods=None,
+    report_tuples=None,
+    report_sites_name=None,
+    initial_conditions=None,
+    window_start=None,
+    window_end=None,
+    indexlist=None,
+    windows=None,
+    window_length=None,
+):
     """run an urbs model for given input, time steps and scenario
 
     Args:
@@ -98,8 +114,6 @@ def run_scenario(input_files, Solver, timesteps, scenario, result_dir, dt, objec
     print(f"window_start: {window_start}, window_end: {window_end}")
     print(f"indexlist: {indexlist}")
     print("--------------------------\n")
-
-
 
     ### --------start of urbs-extensionv1.0 input data addition-------- ###
 
@@ -288,7 +302,7 @@ def run_scenario(input_files, Solver, timesteps, scenario, result_dir, dt, objec
             for (year, timestep), value in sheet_data[col].items():
                 # Store the value in the dictionary as (timestep, year, location, technology) : load factor value
                 loadfactors_dict[(timestep, year, location, tech)] = value
-        #print(loadfactors_dict)
+        # print(loadfactors_dict)
         return loadfactors_dict
 
     def load_data_from_excel(file_path):
@@ -329,7 +343,7 @@ def run_scenario(input_files, Solver, timesteps, scenario, result_dir, dt, objec
 
         # Process the locations sheet: Extract non-empty values from the "Locations" column
         locations_list = locations_data.iloc[:, 0].dropna().tolist()
-        #print(locations_list)
+        # print(locations_list)
 
         # Process the cost sheet into import, manufacturing, and remanufacturing cost dicts
         (
@@ -360,29 +374,41 @@ def run_scenario(input_files, Solver, timesteps, scenario, result_dir, dt, objec
     data_urbsextensionv1 = load_data_from_excel(
         "Input_urbsextensionv1.xlsx"
     )  # Replace with your actual file path
-    #print("Technologies Dictionary:", data_urbsextensionv1["technologies"])
-    #print(
+    # print("Technologies Dictionary:", data_urbsextensionv1["technologies"])
+    # print(
     #    "Instalable Capacity Dictionary:",
     #    data_urbsextensionv1["installable_capacity_dict"],
-    #)
+    # )
 
     ### --------end of urbs-extensionv1.0 input data addition-------- ###
 
     data, data_urbsextensionv1 = scenario(data, data_urbsextensionv1.copy())
 
-    #print("DATA-extension:", data_urbsextensionv1)
+    # print("DATA-extension:", data_urbsextensionv1)
     validate_input(data)
     validate_dc_objective(data, objective)
 
     if window_start is not None and window_end is not None:
         print(f"Filtering data for the window {window_start}–{window_end}")
-        data = slice_data_for_window(data, window_start, window_end,initial_conditions)
-        data_urbsextensionv1 = sliced_dataurbsextensionv1(data_urbsextensionv1, window_start, window_end,initial_conditions)
+        data = slice_data_for_window(data, window_start, window_end, initial_conditions)
+        data_urbsextensionv1 = sliced_dataurbsextensionv1(
+            data_urbsextensionv1, window_start, window_end, initial_conditions
+        )
 
-        #print(initial_conditions)
+        # print(initial_conditions)
 
     # create model
-    prob = create_model(data, data_urbsextensionv1, dt, timesteps, objective, initial_conditions = initial_conditions, window_start = window_start,window_end = window_end,indexlist = indexlist)
+    prob = create_model(
+        data,
+        data_urbsextensionv1,
+        dt,
+        timesteps,
+        objective,
+        initial_conditions=initial_conditions,
+        window_start=window_start,
+        window_end=window_end,
+        indexlist=indexlist,
+    )
 
     # prob_filename = os.path.join(result_dir, 'model.lp')
     # prob.write(prob_filename, io_options={'symbolic_solver_labels':True})
@@ -478,7 +504,7 @@ def run_scenario(input_files, Solver, timesteps, scenario, result_dir, dt, objec
     return prob
 
 
-def slice_data_for_window(data, window_start, window_end,initial_conditions):
+def slice_data_for_window(data, window_start, window_end, initial_conditions):
     """
     Slice the input data dictionary for the specified rolling horizon window.
     Ensure rows outside the `window_start` and `window_end` range are removed.
@@ -489,7 +515,7 @@ def slice_data_for_window(data, window_start, window_end,initial_conditions):
     for key, value in data.items():
         print(f"\nProcessing key: {key}")
         if isinstance(value, pd.DataFrame):
-            if 'support_timeframe' in value.index.names:
+            if "support_timeframe" in value.index.names:
                 # Sort the MultiIndex to avoid UnsortedIndexError
                 value = value.sort_index()
 
@@ -497,74 +523,119 @@ def slice_data_for_window(data, window_start, window_end,initial_conditions):
                 print("Slicing by index...")
                 sliced_df = value.loc[window_start:window_end]
             else:
-                print(f"Warning: `support_timeframe` not found in index for '{key}'. Skipping slicing.")
+                print(
+                    f"Warning: `support_timeframe` not found in index for '{key}'. Skipping slicing."
+                )
                 sliced_data[key] = value
                 continue
 
             # Special handling for `process`: drop rows with only `cap-up` containing values
-            if key == 'process':
-                sliced_df = sliced_df[sliced_df.drop(columns=['cap-up'], errors='ignore').notna().any(axis=1)]
-                print(sliced_df.index.get_level_values('Process'))
-                tech_to_update = ['Biomass Plant', 'Coal Plant CCUS', 'Coal Lignite', 'Coal Lignite CCUS', 'Coal Plant', 'Gas Plant (CCGT)', 'Gas Plant (CCGT) CCUS', 'Hydro (reservoir)', 'Hydro (run-of-river)', 'Nuclear Plant', 'Wind (offshore)', 'Wind (onshore)']
+            if key == "process":
+                sliced_df = sliced_df[
+                    sliced_df.drop(columns=["cap-up"], errors="ignore")
+                    .notna()
+                    .any(axis=1)
+                ]
+                print(sliced_df.index.get_level_values("Process"))
+                tech_to_update = [
+                    "Biomass Plant",
+                    "Coal Plant CCUS",
+                    "Coal Lignite",
+                    "Coal Lignite CCUS",
+                    "Coal Plant",
+                    "Gas Plant (CCGT)",
+                    "Gas Plant (CCGT) CCUS",
+                    "Hydro (reservoir)",
+                    "Hydro (run-of-river)",
+                    "Nuclear Plant",
+                    "Wind (offshore)",
+                    "Wind (onshore)",
+                ]
                 if initial_conditions is not None:
                     # Filter initial_conditions to only include relevant technologies
                     filtered_installed_capacity = {
-                        tech: initial_conditions['Installed_Capacity_Q_s'].get(('EU27', tech), 0)
+                        tech: initial_conditions["Installed_Capacity_Q_s"].get(
+                            ("EU27", tech), 0
+                        )
                         for tech in tech_to_update
                     }
                     print("filtered_installed_capacity", filtered_installed_capacity)
                     for tech, capacity in filtered_installed_capacity.items():
-                        tech_key = f"EU27.{tech}"  # Construct the key for the technology
+                        tech_key = (
+                            f"EU27.{tech}"  # Construct the key for the technology
+                        )
 
                         # Check if the technology exists in the 'process' dataframe index for the window_start year
-                        if tech in sliced_df.index.get_level_values('Process'):
+                        if tech in sliced_df.index.get_level_values("Process"):
                             # Filter the rows for the specific window_start year and the specific technology
                             rows_to_update = sliced_df.loc[
-                                (sliced_df.index.get_level_values('support_timeframe') == window_start) &
-                                (sliced_df.index.get_level_values('Process') == tech)
-                                ]
+                                (
+                                    sliced_df.index.get_level_values(
+                                        "support_timeframe"
+                                    )
+                                    == window_start
+                                )
+                                & (sliced_df.index.get_level_values("Process") == tech)
+                            ]
 
                             # If no rows for the technology at window_start, create them
                             if rows_to_update.empty:
-                                print(f"No rows found for {tech_key} at year {window_start}. Creating a new row...")
+                                print(
+                                    f"No rows found for {tech_key} at year {window_start}. Creating a new row..."
+                                )
                                 # Create a new row for the missing tech at the window_start year
                                 new_row = pd.DataFrame(
-                                    {'inst-cap': [capacity]},  # Set the inst-cap value from filtered_installed_capacity
-                                    index=pd.MultiIndex.from_tuples([(window_start, 'EU27', tech)],
-                                                                    names=['support_timeframe', 'Site', 'Process'])
+                                    {
+                                        "inst-cap": [capacity]
+                                    },  # Set the inst-cap value from filtered_installed_capacity
+                                    index=pd.MultiIndex.from_tuples(
+                                        [(window_start, "EU27", tech)],
+                                        names=["support_timeframe", "Site", "Process"],
+                                    ),
                                 )
                                 # Add this row to the sliced_df DataFrame
                                 sliced_df = pd.concat([sliced_df, new_row])
 
                             # Now update the 'inst-cap' column for the filtered rows (if found)
-                            sliced_df.loc[rows_to_update.index, 'inst-cap'] = capacity
+                            sliced_df.loc[rows_to_update.index, "inst-cap"] = capacity
                             print(
-                                f"Updated {tech_key} inst-cap to {capacity} for {window_start}")  # Debugging statement
+                                f"Updated {tech_key} inst-cap to {capacity} for {window_start}"
+                            )  # Debugging statement
                         else:
-                            print(f"{tech_key} not found in the 'process' DataFrame.")  # Debugging statement
-
-
+                            print(
+                                f"{tech_key} not found in the 'process' DataFrame."
+                            )  # Debugging statement
 
             # Assign weight = 1 for the last year in the rolling horizon if missing
             # Assign weight = 1 as a row for the last year in the rolling horizon
-            if key == 'global_prop':  # Adjust this key if needed
+            if key == "global_prop":  # Adjust this key if needed
                 # Ensure Weight is added as a property for the last year (window_end)
-                if ('Weight' not in sliced_df.index.get_level_values('Property')) and (
-                        window_end in sliced_df.index.get_level_values('support_timeframe')):
+                if ("Weight" not in sliced_df.index.get_level_values("Property")) and (
+                    window_end in sliced_df.index.get_level_values("support_timeframe")
+                ):
                     # Create a new row for 'Weight' at the window_end year
                     new_row = pd.DataFrame(
-                        {'value': [1]},  # Set Weight to 1
-                        index=pd.MultiIndex.from_tuples([(window_end, 'Weight')], names=sliced_df.index.names)
+                        {"value": [1]},  # Set Weight to 1
+                        index=pd.MultiIndex.from_tuples(
+                            [(window_end, "Weight")], names=sliced_df.index.names
+                        ),
                     )
                     # Append the new row to the DataFrame
                     sliced_df = pd.concat([sliced_df, new_row])
                 # Add Discount Rate = 0.03 for window_start year
-                if ('Discount rate' not in sliced_df.index.get_level_values('Property')) and (
-                        window_start in sliced_df.index.get_level_values('support_timeframe')):
+                if (
+                    "Discount rate" not in sliced_df.index.get_level_values("Property")
+                ) and (
+                    window_start
+                    in sliced_df.index.get_level_values("support_timeframe")
+                ):
                     # Create a new row for 'Discount Rate' at the window_start year
                     new_discount_row = pd.DataFrame(
-                        {'value': [0.03]},  # Set Discount Rate to 0.03
-                        index=pd.MultiIndex.from_tuples([(window_start, 'Discount rate')], names=sliced_df.index.names)
+                        {"value": [0.03]},  # Set Discount Rate to 0.03
+                        index=pd.MultiIndex.from_tuples(
+                            [(window_start, "Discount rate")],
+                            names=sliced_df.index.names,
+                        ),
                     )
                     # Append the new Discount Rate row to the DataFrame
                     sliced_df = pd.concat([sliced_df, new_discount_row])
@@ -580,7 +651,10 @@ def slice_data_for_window(data, window_start, window_end,initial_conditions):
 
     return sliced_data
 
-def sliced_dataurbsextensionv1(data_urbsextensionv1, window_start, window_end,initial_conditions):
+
+def sliced_dataurbsextensionv1(
+    data_urbsextensionv1, window_start, window_end, initial_conditions
+):
     """
     Update the DATA-extension dictionary for the current rolling horizon window.
 
@@ -593,27 +667,27 @@ def sliced_dataurbsextensionv1(data_urbsextensionv1, window_start, window_end,in
         dict: The updated DATA-extension dictionary.
     """
     # Update the base_params to reflect the current rolling horizon window
-    data_urbsextensionv1['base_params']['y0'] = window_start
-    data_urbsextensionv1['base_params']['y_end'] = window_end
+    data_urbsextensionv1["base_params"]["y0"] = window_start
+    data_urbsextensionv1["base_params"]["y_end"] = window_end
 
-    tech_to_update = ['solarPV', 'windoff', 'windon']  # List of technologies to update
-    print(data_urbsextensionv1['technologies'])
+    tech_to_update = ["solarPV", "windoff", "windon"]  # List of technologies to update
+    print(data_urbsextensionv1["technologies"])
 
     # If initial_conditions is not None, then update the capacities, stockpiles, and decommissions
     if initial_conditions is not None:
         # Filter initial_conditions to only include relevant technologies
         filtered_installed_capacity = {
-            tech: initial_conditions['Installed_Capacity_Q_s'].get(('EU27', tech), 0)
+            tech: initial_conditions["Installed_Capacity_Q_s"].get(("EU27", tech), 0)
             for tech in tech_to_update
         }
 
         filtered_stockpile = {
-            tech: initial_conditions['Existing_Stock_Q_stock'].get(('EU27', tech), 0)
+            tech: initial_conditions["Existing_Stock_Q_stock"].get(("EU27", tech), 0)
             for tech in tech_to_update
         }
 
         filtered_capacity_dec_start = {
-            tech: initial_conditions['capacity_dec_start'].get(('EU27', tech), 0)
+            tech: initial_conditions["capacity_dec_start"].get(("EU27", tech), 0)
             for tech in tech_to_update
         }
 
@@ -621,117 +695,134 @@ def sliced_dataurbsextensionv1(data_urbsextensionv1, window_start, window_end,in
         for tech in tech_to_update:
             tech_key = tech
             # Access the technology's information within the 'EU27' dictionary
-            if tech_key in data_urbsextensionv1['technologies']['EU27']:
+            if tech_key in data_urbsextensionv1["technologies"]["EU27"]:
                 # Get current values before update
-                current_capacity = data_urbsextensionv1['technologies']['EU27'][tech_key].get('InitialCapacity',
-                                                                                              'Not Set')
-                current_stockpile = data_urbsextensionv1['technologies']['EU27'][tech_key].get('InitialStockpile',
-                                                                                               'Not Set')
-                current_decommission = data_urbsextensionv1['technologies']['EU27'][tech_key].get(
-                    'Initial_decommisions', 'Not Set')
+                current_capacity = data_urbsextensionv1["technologies"]["EU27"][
+                    tech_key
+                ].get("InitialCapacity", "Not Set")
+                current_stockpile = data_urbsextensionv1["technologies"]["EU27"][
+                    tech_key
+                ].get("InitialStockpile", "Not Set")
+                current_decommission = data_urbsextensionv1["technologies"]["EU27"][
+                    tech_key
+                ].get("Initial_decommisions", "Not Set")
 
                 # Update InitialCapacity
                 new_capacity = filtered_installed_capacity.get(tech, 0)
-                data_urbsextensionv1['technologies']['EU27'][tech_key]['InitialCapacity'] = new_capacity
+                data_urbsextensionv1["technologies"]["EU27"][tech_key][
+                    "InitialCapacity"
+                ] = new_capacity
 
                 # Update InitialStockpile
                 new_stockpile = filtered_stockpile.get(tech, 0)
-                data_urbsextensionv1['technologies']['EU27'][tech_key]['InitialStockpile'] = new_stockpile
+                data_urbsextensionv1["technologies"]["EU27"][tech_key][
+                    "InitialStockpile"
+                ] = new_stockpile
 
                 # Update Initial_decommissions
                 new_decommission = filtered_capacity_dec_start.get(tech, 0)
-                data_urbsextensionv1['technologies']['EU27'][tech_key]['Initial_decommisions'] = new_decommission
+                data_urbsextensionv1["technologies"]["EU27"][tech_key][
+                    "Initial_decommisions"
+                ] = new_decommission
 
                 # Print the updates
                 print(f"Updated {tech_key}:")
                 print(f"  InitialCapacity: {current_capacity} -> {new_capacity}")
                 print(f"  InitialStockpile: {current_stockpile} -> {new_stockpile}")
-                print(f"  Initial_decommisions: {current_decommission} -> {new_decommission}")
+                print(
+                    f"  Initial_decommisions: {current_decommission} -> {new_decommission}"
+                )
             else:
-                print(f"Technology {tech_key} not found in data_urbsextensionv1['technologies']['EU27'].")
+                print(
+                    f"Technology {tech_key} not found in data_urbsextensionv1['technologies']['EU27']."
+                )
 
     # Filter each dictionary based on the rolling horizon window
-    data_urbsextensionv1['importcost_dict'] = {
+    data_urbsextensionv1["importcost_dict"] = {
         key: value
-        for key, value in data_urbsextensionv1['importcost_dict'].items()
+        for key, value in data_urbsextensionv1["importcost_dict"].items()
         if window_start <= key[0] <= window_end
     }
-    data_urbsextensionv1['manufacturingcost_dict'] = {
+    data_urbsextensionv1["manufacturingcost_dict"] = {
         key: value
-        for key, value in data_urbsextensionv1['manufacturingcost_dict'].items()
+        for key, value in data_urbsextensionv1["manufacturingcost_dict"].items()
         if window_start <= key[0] <= window_end
     }
-    data_urbsextensionv1['remanufacturingcost_dict'] = {
+    data_urbsextensionv1["remanufacturingcost_dict"] = {
         key: value
-        for key, value in data_urbsextensionv1['remanufacturingcost_dict'].items()
+        for key, value in data_urbsextensionv1["remanufacturingcost_dict"].items()
         if window_start <= key[0] <= window_end
     }
-    data_urbsextensionv1['recyclingcost_dict'] = {
+    data_urbsextensionv1["recyclingcost_dict"] = {
         key: value
-        for key, value in data_urbsextensionv1['recyclingcost_dict'].items()
+        for key, value in data_urbsextensionv1["recyclingcost_dict"].items()
         if window_start <= key[0] <= window_end
     }
-    data_urbsextensionv1['loadfactors_dict'] = {
+    data_urbsextensionv1["loadfactors_dict"] = {
         key: value
-        for key, value in data_urbsextensionv1['loadfactors_dict'].items()
+        for key, value in data_urbsextensionv1["loadfactors_dict"].items()
         if window_start <= key[1] <= window_end
     }
-    data_urbsextensionv1['dcr_dict'] = {
+    data_urbsextensionv1["dcr_dict"] = {
         key: value
-        for key, value in data_urbsextensionv1['dcr_dict'].items()
+        for key, value in data_urbsextensionv1["dcr_dict"].items()
         if window_start <= key[0] <= window_end
     }
-    data_urbsextensionv1['stocklvl_dict'] = {
+    data_urbsextensionv1["stocklvl_dict"] = {
         key: value
-        for key, value in data_urbsextensionv1['stocklvl_dict'].items()
+        for key, value in data_urbsextensionv1["stocklvl_dict"].items()
         if window_start <= key[0] <= window_end
     }
 
-    data_urbsextensionv1['installable_capacity_dict'] = {
+    data_urbsextensionv1["installable_capacity_dict"] = {
         key: value
-        for key, value in data_urbsextensionv1['installable_capacity_dict'].items()
+        for key, value in data_urbsextensionv1["installable_capacity_dict"].items()
         if window_start <= key[0] <= window_end
     }
     # Debug: Print updated data for verification
     print("\n--- Debugging sliced_dataurbsextensionv1 ---")
-    print("Base Params (y0, y_end):", data_urbsextensionv1['base_params'])
+    print("Base Params (y0, y_end):", data_urbsextensionv1["base_params"])
     print("Sample importcost_dict entries:")
-    for i, (k, v) in enumerate(data_urbsextensionv1['importcost_dict'].items()):
+    for i, (k, v) in enumerate(data_urbsextensionv1["importcost_dict"].items()):
         print(f"  {k}: {v}")
         if i >= 4:  # Print only the first 5 entries
             break
     print("Sample manufacturingcost_dict entries:")
-    for i, (k, v) in enumerate(data_urbsextensionv1['manufacturingcost_dict'].items()):
+    for i, (k, v) in enumerate(data_urbsextensionv1["manufacturingcost_dict"].items()):
         print(f"  {k}: {v}")
         if i >= 4:
             break
     print("Sample remanufacturingcost_dict entries:")
-    for i, (k, v) in enumerate(data_urbsextensionv1['remanufacturingcost_dict'].items()):
+    for i, (k, v) in enumerate(
+        data_urbsextensionv1["remanufacturingcost_dict"].items()
+    ):
         print(f"  {k}: {v}")
         if i >= 4:
             break
     print("Sample recyclingcost_dict entries:")
-    for i, (k, v) in enumerate(data_urbsextensionv1['recyclingcost_dict'].items()):
+    for i, (k, v) in enumerate(data_urbsextensionv1["recyclingcost_dict"].items()):
         print(f"  {k}: {v}")
         if i >= 4:
             break
     print("Sample loadfactors_dict entries:")
-    for i, (k, v) in enumerate(data_urbsextensionv1['loadfactors_dict'].items()):
+    for i, (k, v) in enumerate(data_urbsextensionv1["loadfactors_dict"].items()):
         print(f"  {k}: {v}")
         if i >= 4:
             break
     print("Sample dcr_dict entries:")
-    for i, (k, v) in enumerate(data_urbsextensionv1['dcr_dict'].items()):
+    for i, (k, v) in enumerate(data_urbsextensionv1["dcr_dict"].items()):
         print(f"  {k}: {v}")
         if i >= 4:
             break
     print("Sample stocklvl_dict entries:")
-    for i, (k, v) in enumerate(data_urbsextensionv1['stocklvl_dict'].items()):
+    for i, (k, v) in enumerate(data_urbsextensionv1["stocklvl_dict"].items()):
         print(f"  {k}: {v}")
         if i >= 4:
             break
     print("Sample instalable capacity entries:")
-    for i, (k, v) in enumerate(data_urbsextensionv1['installable_capacity_dict'].items()):
+    for i, (k, v) in enumerate(
+        data_urbsextensionv1["installable_capacity_dict"].items()
+    ):
         print(f"  {k}: {v}")
         if i >= 4:
             break
