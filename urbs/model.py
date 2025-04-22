@@ -45,12 +45,6 @@ def create_model(
     m.created = datetime.now().strftime("%Y%m%dT%H%M")
     m._data = data
 
-    # Apply initial conditions if provided
-    if initial_conditions:
-        for param, values in initial_conditions.items():
-            for key, value in values.items():
-                getattr(m, param)[key] = value  # Update Pyomo model parameters
-
     # Parameters
 
     # weight = length of year (hours) / length of simulation (hours)
