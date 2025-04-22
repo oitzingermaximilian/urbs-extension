@@ -3,6 +3,36 @@ import shutil
 import argparse
 import urbs
 from datetime import date
+import pandas as pd
+
+def read_carry_over_from_excel(result_path, scenario_name):
+    """Extract carry-over values from the result Excel of the previous window."""
+    filepath = os.path.join(result_path, f"{scenario_name}.xlsx")
+
+    # Read relevant sheets (update sheet names if needed!)
+    cap_sheet = pd.read_excel(filepath, sheet_name="extension_total_caps")
+    stock_sheet = pd.read_excel(filepath, sheet_name="Stock_Capacity")
+    dec_sheet = pd.read_excel(filepath, sheet_name="decom")
+
+    # Extract only the last timestep
+    last_timestep = cap_sheet['stf'].max()
+
+    cap_last = cap_sheet[cap_sheet['stf'] == last_timestep]
+    stock_last = stock_sheet[stock_sheet['stf'] == last_timestep]
+    dec_last = dec_sheet[dec_sheet['stf'] == last_timestep]
+
+    # Transform into dictionary format
+    cap_dict = {(row['sit'], row['pro']): row['cap_pro'] for _, row in cap_last.iterrows()}
+    stock_dict = {(row['location'], row['tech']): row['capacity_ext_stock'] for _, row in stock_last.iterrows()}
+    dec_dict = {(row['location'], row['tech']): row['capacity_dec'] for _, row in dec_last.iterrows()}
+
+    return {
+        'Installed_Capacity_Q_s': cap_dict,
+        'Existing_Stock_Q_stock': stock_dict,
+        'capacity_dec_start': dec_dict,
+        # optionally add 'cap_pro' if it's also stored
+    }
+
 
 # Add command-line argument parsing
 parser = argparse.ArgumentParser(description='Run URBS model in different optimization modes.')
@@ -143,7 +173,13 @@ def run_rolling_horizon(window_length=5):
             timesteps = range(window_start_timestep, window_end_timestep)
 
             # Apply carry-over initial conditions
-            initial_conditions = carry_over if i > 0 else None
+            if i > 0:
+                prev_window_start, prev_window_end = windows[i - 1]
+                prev_result_dir = os.path.join(result_dir, f"window_{prev_window_start}_{prev_window_end}")
+                initial_conditions = read_carry_over_from_excel(prev_result_dir, scenario)
+                print(initial_conditions)
+            else:
+                initial_conditions = None
 
             # Pass rolling horizon parameters to urbs.run_scenario
             prob = urbs.run_scenario(
@@ -211,30 +247,3 @@ else:
 print("\nSimulation completed successfully!")
 
 
-def read_carry_over_from_excel(result_path, scenario_name):
-    """Extract carry-over values from the result Excel of the previous window."""
-    filepath = os.path.join(result_path, f"{scenario_name}.xlsx")
-
-    # Read relevant sheets (update sheet names if needed!)
-    cap_sheet = pd.read_excel(filepath, sheet_name="extension_total_caps")
-    stock_sheet = pd.read_excel(filepath, sheet_name="Stock_Capacity")
-    dec_sheet = pd.read_excel(filepath, sheet_name="decom")
-
-    # Extract only the last timestep
-    last_timestep = cap_sheet['stf'].max()
-
-    cap_last = cap_sheet[cap_sheet['stf'] == last_timestep]
-    stock_last = stock_sheet[stock_sheet['stf'] == last_timestep]
-    dec_last = dec_sheet[dec_sheet['stf'] == last_timestep]
-
-    # Transform into dictionary format
-    cap_dict = {(row['sit'], row['pro']): row['cap_pro'] for _, row in cap_last.iterrows()}
-    stock_dict = {(row['location'], row['tech']): row['capacity_ext_stock'] for _, row in stock_last.iterrows()}
-    dec_dict = {(row['location'], row['tech']): row['capacity_dec'] for _, row in dec_last.iterrows()}
-
-    return {
-        'Installed_Capacity_Q_s': cap_dict,
-        'Existing_Stock_Q_stock': stock_dict,
-        'capacity_dec_start': dec_dict,
-        # optionally add 'cap_pro' if it's also stored
-    }
