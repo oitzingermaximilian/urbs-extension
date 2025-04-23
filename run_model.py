@@ -14,6 +14,7 @@ def read_carry_over_from_excel(result_path, scenario_name, window_start):
     cap_sheet = pd.read_excel(filepath, sheet_name="extension_total_caps")
     stock_sheet = pd.read_excel(filepath, sheet_name="extension_only_caps")
     dec_sheet = pd.read_excel(filepath, sheet_name="decom")
+    total_CO2_sheet = pd.read_excel(filepath, sheet_name="total_co2")
 
     # Forward-fill the stf column to propagate the year across rows that have NaN
     cap_sheet["stf"] = cap_sheet["stf"].fillna(method="ffill")
@@ -47,12 +48,14 @@ def read_carry_over_from_excel(result_path, scenario_name, window_start):
         (row["location"], row["tech"]): row["capacity_dec"]
         for _, row in dec_last.iterrows()
     }
+    total_co2 = total_CO2_sheet["Total_CO2"].iloc[0]
 
     # Return the extracted data in the correct format
     return {
         "Installed_Capacity_Q_s": installed_capacity,
         "Existing_Stock_Q_stock": stocklevel,
         "capacity_dec_start": decomissions,
+        "Total_CO2_Emissions": total_co2,
     }
 
 
@@ -220,6 +223,8 @@ def run_rolling_horizon(window_length=5):
                 window_end=window_end,
                 indexlist=indexlist,
             )
+
+            print(dir(prob))
 
 
 # Execute selected mode

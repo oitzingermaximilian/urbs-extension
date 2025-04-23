@@ -35,6 +35,8 @@ def report(instance, filename, report_tuples=None, report_sites_name={}):
         decisionvalues_sec,
         scrapdf,
         decomdf,
+        inst_processes_time,
+        df_total_co2,
     ) = get_constants(instance)
 
     # create spreadsheet writer object
@@ -53,6 +55,8 @@ def report(instance, filename, report_tuples=None, report_sites_name={}):
         capacity_ext_total.to_excel(writer, sheet_name="extension_only_totalcapacity")
         scrapdf.to_excel(writer, sheet_name="scrap")
         decomdf.to_excel(writer, sheet_name="decom")
+        inst_processes_time.to_excel(writer, sheet_name="inst_process")
+        df_total_co2.to_excel(writer, sheet_name="total_co2")
 
         #################################################################################
 

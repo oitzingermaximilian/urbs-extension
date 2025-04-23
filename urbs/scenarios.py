@@ -29,7 +29,7 @@ def scenario_base(data, data_urbsextensionv1):
             else:
                 pro.loc[(stf, "EU27", "Wind (onshore)"), "cap-up"] = 0
                 pro.loc[(stf, "EU27", "Wind (offshore)"), "cap-up"] = 0
-                pro.loc[(stf, "EU27", "Biomass Plant"), "cap-up"] = 40000
+                pro.loc[(stf, "EU27", "Biomass Plant"), "cap-up"] = 999999999999
 
     # print(data["process"])
 

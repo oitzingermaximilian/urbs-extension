@@ -39,6 +39,7 @@ def get_constants(instance):
     csto = get_entities(
         instance, ["cap_sto_c", "cap_sto_c_new", "cap_sto_p", "cap_sto_p_new"]
     )
+    inst_processes_time = get_entities(instance, ["inst_pro_tuples"])
 
     ##########################################################################
     #                                                                        #
@@ -104,6 +105,12 @@ def get_constants(instance):
         key: value for key, value in e_pro_out_df.items() if key[-1] == "CO2"
     }
     df_co2 = pd.DataFrame(list(e_pro_out_co2.items()), columns=["Index", "Value"])
+
+    # Sum all values to get total CO₂
+    total_co2_value = df_co2["Value"].sum()
+
+    # Optional: wrap it in a one-row DataFrame if needed
+    df_total_co2 = pd.DataFrame({"Total_CO2": [total_co2_value]})
 
     ####extension_balance
     # Filter e_pro_out_df for 'Elec'
@@ -299,6 +306,8 @@ def get_constants(instance):
         decisionvalues_sec,
         scrapdf,
         decomdf,
+        inst_processes_time,
+        df_total_co2,
     )
 
 

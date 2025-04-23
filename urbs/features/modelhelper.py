@@ -258,6 +258,7 @@ def inst_pro_tuples(m):
                     < min(m.stf) + m.process_dict["lifetime"][(stf, sit, pro)]
                 ):
                     inst_pro.append((sit, pro, stf_later))
+
             elif (stf_later + sorted_stf[index_helper + 1]) / 2 <= (
                 min(m.stf) + m.process_dict["lifetime"][(stf, sit, pro)]
             ):

@@ -551,6 +551,25 @@ def slice_data_for_window(data, window_start, window_end, initial_conditions):
                     "Wind (offshore)",
                     "Wind (onshore)",
                 ]
+
+                hardcoded_lifetimes = {
+                    "Biomass Plant": 25,
+                    "Coal Plant CCUS": 40,
+                    "Coal Lignite": 40,
+                    "Coal Lignite CCUS": 40,
+                    "Coal Plant": 40,
+                    "Gas Plant (CCGT)": 25,
+                    "Gas Plant (CCGT) CCUS": 25,
+                    "Hydro (reservoir)": 50,
+                    "Hydro (run-of-river)": 50,
+                    "Nuclear Plant": 60,
+                    "Wind (offshore)": 25,
+                    "Wind (onshore)": 25,
+                }
+
+                # Define the very first model year for lifetime offset
+                first_model_year = 2024  # ← Adjust this if needed
+                elapsed_years = window_start - first_model_year
                 if initial_conditions is not None:
                     # Filter initial_conditions to only include relevant technologies
                     filtered_installed_capacity = {
@@ -606,9 +625,75 @@ def slice_data_for_window(data, window_start, window_end, initial_conditions):
                                 f"{tech_key} not found in the 'process' DataFrame."
                             )  # Debugging statement
 
+                    for tech, base_lifetime in hardcoded_lifetimes.items():
+                        tech_key = f"EU27.{tech}"
+                        adjusted_lifetime = max(base_lifetime - elapsed_years, 1)
+
+                        if tech in sliced_df.index.get_level_values("Process"):
+                            lifetime_rows = sliced_df.loc[
+                                (
+                                    sliced_df.index.get_level_values(
+                                        "support_timeframe"
+                                    )
+                                    == window_start
+                                )
+                                & (sliced_df.index.get_level_values("Process") == tech)
+                            ]
+
+                            if lifetime_rows.empty:
+                                new_lifetime_row = pd.DataFrame(
+                                    {"lifetime": [adjusted_lifetime]},
+                                    index=pd.MultiIndex.from_tuples(
+                                        [(window_start, "EU27", tech)],
+                                        names=["support_timeframe", "Site", "Process"],
+                                    ),
+                                )
+                                sliced_df = pd.concat([sliced_df, new_lifetime_row])
+                                print(
+                                    f"Added lifetime for {tech_key} at {window_start}: {adjusted_lifetime}"
+                                )
+                            else:
+                                sliced_df.loc[lifetime_rows.index, "lifetime"] = (
+                                    adjusted_lifetime
+                                )
+                                print(
+                                    f"Updated lifetime for {tech_key} at {window_start}: {adjusted_lifetime}"
+                                )
+
+                    non_first_years = (
+                        sliced_df.index.get_level_values("support_timeframe")
+                        != window_start
+                    )
+                    cols_to_clean = ["inst-cap", "lifetime"]
+
+                    for col in cols_to_clean:
+                        if col in sliced_df.columns:
+                            sliced_df.loc[non_first_years, col] = np.nan
+
+                    required_cols = [
+                        "area-per-cap"
+                    ]  # Add other required columns here if needed
+                    cols_to_keep = [
+                        col
+                        for col in sliced_df.columns
+                        if col in required_cols or not sliced_df[col].isna().all()
+                    ]
+                    sliced_df = sliced_df[cols_to_keep]
             # Assign weight = 1 for the last year in the rolling horizon if missing
             # Assign weight = 1 as a row for the last year in the rolling horizon
             if key == "global_prop":  # Adjust this key if needed
+                co2_limit_mask = (
+                    sliced_df.index.get_level_values("support_timeframe").isin(
+                        range(window_start, window_end + 1)
+                    )
+                ) & (sliced_df.index.get_level_values("Property") == "CO2 limit")
+
+                if co2_limit_mask.any():
+                    sliced_df.loc[co2_limit_mask, "value"] = (
+                        999999999999  # or 9999999999 or any other large number
+                    )
+                    print(f"Set CO2 limit to inf for years {window_start}–{window_end}")
+
                 # Ensure Weight is added as a property for the last year (window_end)
                 if ("Weight" not in sliced_df.index.get_level_values("Property")) and (
                     window_end in sliced_df.index.get_level_values("support_timeframe")
@@ -639,6 +724,24 @@ def slice_data_for_window(data, window_start, window_end, initial_conditions):
                     )
                     # Append the new Discount Rate row to the DataFrame
                     sliced_df = pd.concat([sliced_df, new_discount_row])
+                    # Add Discount Rate = 0.03 for window_start year
+                if (
+                    "CO2 budget" not in sliced_df.index.get_level_values("Property")
+                ) and (
+                    window_start
+                    in sliced_df.index.get_level_values("support_timeframe")
+                ):
+                    # Create a new row for 'CO2 budget' at the window_start year
+                    new_co2_budget_row = pd.DataFrame(
+                        {"value": [99999999999]},  # Set CO2 budget to 4,000,000,000
+                        index=pd.MultiIndex.from_tuples(
+                            [(window_start, "CO2 budget")],
+                            names=sliced_df.index.names,
+                        ),
+                    )
+                    # Append the new CO2 budget row to the DataFrame
+                    sliced_df = pd.concat([sliced_df, new_co2_budget_row])
+                    # Add CO2 budget = 4,000,000,000 for window_start year
 
             # Debug: Print the resulting DataFrame for verification
             print(f"Sliced DataFrame for '{key}':\n{sliced_df}")
