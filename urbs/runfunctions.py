@@ -539,7 +539,7 @@ def slice_data_for_window(data, window_start, window_end, initial_conditions):
                 print(sliced_df.index.get_level_values("Process"))
                 tech_to_update = [
                     "Biomass Plant",
-                    "Coal Plant CCUS",
+                    "Coal CCUS",
                     "Coal Lignite",
                     "Coal Lignite CCUS",
                     "Coal Plant",
@@ -554,7 +554,7 @@ def slice_data_for_window(data, window_start, window_end, initial_conditions):
 
                 hardcoded_lifetimes = {
                     "Biomass Plant": 25,
-                    "Coal Plant CCUS": 40,
+                    "Coal CCUS": 40,
                     "Coal Lignite": 40,
                     "Coal Lignite CCUS": 40,
                     "Coal Plant": 40,
@@ -694,19 +694,7 @@ def slice_data_for_window(data, window_start, window_end, initial_conditions):
                     )
                     print(f"Set CO2 limit to inf for years {window_start}–{window_end}")
 
-                # Ensure Weight is added as a property for the last year (window_end)
-                if ("Weight" not in sliced_df.index.get_level_values("Property")) and (
-                    window_end in sliced_df.index.get_level_values("support_timeframe")
-                ):
-                    # Create a new row for 'Weight' at the window_end year
-                    new_row = pd.DataFrame(
-                        {"value": [1]},  # Set Weight to 1
-                        index=pd.MultiIndex.from_tuples(
-                            [(window_end, "Weight")], names=sliced_df.index.names
-                        ),
-                    )
-                    # Append the new row to the DataFrame
-                    sliced_df = pd.concat([sliced_df, new_row])
+
                 # Add Discount Rate = 0.03 for window_start year
                 if (
                     "Discount rate" not in sliced_df.index.get_level_values("Property")
@@ -794,6 +782,13 @@ def sliced_dataurbsextensionv1(
             for tech in tech_to_update
         }
 
+        filtered_cumulative_sec_start = {
+            tech: initial_conditions["Total Cap Sec"].get(("EU27", tech), 0)
+            for tech in tech_to_update
+        }
+
+
+
         # Update technologies_dict with filtered values
         for tech in tech_to_update:
             tech_key = tech
@@ -809,6 +804,9 @@ def sliced_dataurbsextensionv1(
                 current_decommission = data_urbsextensionv1["technologies"]["EU27"][
                     tech_key
                 ].get("Initial_decommisions", "Not Set")
+                current_cumulative_sec = data_urbsextensionv1["technologies"]["EU27"][
+                    tech_key
+                ].get("Initial_secondary_cap", "Not Set")
 
                 # Update InitialCapacity
                 new_capacity = filtered_installed_capacity.get(tech, 0)
@@ -828,12 +826,20 @@ def sliced_dataurbsextensionv1(
                     "Initial_decommisions"
                 ] = new_decommission
 
+                new_cap_ciumulative = filtered_cumulative_sec_start.get(tech, 0)
+                data_urbsextensionv1["technologies"]["EU27"][tech_key][
+                    "Initial_secondary_cap"
+                ] = new_cap_ciumulative
+
                 # Print the updates
                 print(f"Updated {tech_key}:")
                 print(f"  InitialCapacity: {current_capacity} -> {new_capacity}")
                 print(f"  InitialStockpile: {current_stockpile} -> {new_stockpile}")
                 print(
                     f"  Initial_decommisions: {current_decommission} -> {new_decommission}"
+                )
+                print(
+                    f"  Initial_secondary_cap: {current_cumulative_sec} -> {new_cap_ciumulative}"
                 )
             else:
                 print(

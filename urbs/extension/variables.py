@@ -1,6 +1,5 @@
 import pyomo.environ as pyomo
 
-
 def apply_variables(m):
     """
     These Variables are used for the stockpile.py script constraints

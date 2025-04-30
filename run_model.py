@@ -6,17 +6,21 @@ from datetime import date
 import pandas as pd
 
 
-def read_carry_over_from_excel(result_path, scenario_name, window_start):
-    """Extract carry-over values from the result Excel of the previous window."""
+def read_carry_over_from_excel(result_path, scenario_name, next_window_start_year):
+    """
+    Extract carry-over values from the result Excel of the previous window.
+    Pulls values for the year just before the new window start.
+    """
     filepath = os.path.join(result_path, f"{scenario_name}.xlsx")
 
-    # Read relevant sheets (update sheet names if needed!)
+    # Read relevant sheets
     cap_sheet = pd.read_excel(filepath, sheet_name="extension_total_caps")
     stock_sheet = pd.read_excel(filepath, sheet_name="extension_only_caps")
     dec_sheet = pd.read_excel(filepath, sheet_name="decom")
     total_CO2_sheet = pd.read_excel(filepath, sheet_name="total_co2")
+    secondary_cap = pd.read_excel(filepath, sheet_name="secondary_cap_sum")
 
-    # Forward-fill the stf column to propagate the year across rows that have NaN
+    # Fill missing values
     cap_sheet["stf"] = cap_sheet["stf"].fillna(method="ffill")
     stock_sheet["stf"] = stock_sheet["stf"].fillna(method="ffill")
     dec_sheet["stf"] = dec_sheet["stf"].fillna(method="ffill")
@@ -24,21 +28,23 @@ def read_carry_over_from_excel(result_path, scenario_name, window_start):
     stock_sheet["location"] = stock_sheet["location"].fillna(method="ffill")
     dec_sheet["location"] = dec_sheet["location"].fillna(method="ffill")
 
-    # Extract only the last timestep
-    last_timestep = window_start - 1
+    # New logic: extract year before new window starts
+    carry_year = next_window_start_year - 1
 
-    cap_last = cap_sheet[cap_sheet["stf"] == last_timestep]
-    stock_last = stock_sheet[stock_sheet["stf"] == last_timestep]
-    dec_last = dec_sheet[dec_sheet["stf"] == last_timestep]
+    cap_last = cap_sheet[cap_sheet["stf"] == carry_year]
+    stock_last = stock_sheet[stock_sheet["stf"] == carry_year]
+    dec_last = dec_sheet[dec_sheet["stf"] == carry_year]
+    secondary_cap_last = secondary_cap[secondary_cap["stf"] == carry_year]
 
-    # Debugging: Check if the filtering gives the expected results
-    print(f"Last timestep: {last_timestep}")
-    print(f"Rows in cap sheet for last timestep:\n{cap_last}")
-    print(f"Rows in stock sheet for last timestep:\n{stock_last}")
-    print(f"Rows in dec sheet for last timestep:\n{dec_last}")
+    print(f"Using carry-over from year: {carry_year}")
+    print(f"Rows in cap sheet:\n{cap_last}")
+    print(f"Rows in stock sheet:\n{stock_last}")
+    print(f"Rows in dec sheet:\n{dec_last}")
+    print(f"Rows in cap sec sheet:\n{secondary_cap_last}")
 
     installed_capacity = {
-        (row["sit"], row["pro"]): row["cap_pro"] for _, row in cap_last.iterrows()
+        (row["sit"], row["pro"]): row["cap_pro"]
+        for _, row in cap_last.iterrows()
     }
     stocklevel = {
         (row["location"], row["tech"]): row["capacity_ext_stock"]
@@ -50,12 +56,17 @@ def read_carry_over_from_excel(result_path, scenario_name, window_start):
     }
     total_co2 = total_CO2_sheet["Total_CO2"].iloc[0]
 
-    # Return the extracted data in the correct format
+    total_cap_sec = {
+        (row["location"], row["tech"]): row["cumulative"]
+        for _, row in secondary_cap_last.iterrows()
+    }
+
     return {
         "Installed_Capacity_Q_s": installed_capacity,
         "Existing_Stock_Q_stock": stocklevel,
         "capacity_dec_start": decomissions,
         "Total_CO2_Emissions": total_co2,
+        "Total Cap Sec": total_cap_sec,
     }
 
 
@@ -171,8 +182,8 @@ def run_perfect_foresight():
         )
 
 
-def run_rolling_horizon(window_length=5):
-    for scenario_name, scenario in scenarios:
+#def run_myopic(window_length=5):
+#    for scenario_name, scenario in scenarios:
         total_years = 27
         windows = [
             (2024 + i, 2024 + i + window_length - 1)
@@ -227,12 +238,66 @@ def run_rolling_horizon(window_length=5):
             print(dir(prob))
 
 
+def run_rolling_horizon(start_year=2024, end_year=2050, step=1):
+    for scenario_name, scenario in scenarios:
+        total_years = end_year - start_year + 1
+        windows = [
+            (start_year + i, end_year)
+            for i in range(0, total_years, step)
+        ]
+
+        for i, (window_start, window_end) in enumerate(windows):
+            print(f"\nRunning window {i + 1}/{len(windows)}: {window_start}-{window_end}")
+            window_result_dir = os.path.join(result_dir, f"rolling_{window_start}_to_{window_end}")
+            os.makedirs(window_result_dir, exist_ok=True)
+
+            indexlist = list(range(window_start, window_end + 1))
+            timesteps = range(0, 13)
+
+            # Load carry-over from previous window if this is not the first
+            if i > 0:
+                prev_window_start, _ = windows[i - 1]
+                prev_result_dir = os.path.join(result_dir, f"rolling_{prev_window_start}_to_{end_year}")
+                initial_conditions = read_carry_over_from_excel(
+                    result_path=prev_result_dir,
+                    scenario_name=scenario_name,
+                    next_window_start_year=window_start
+                )
+                print(f"Loaded initial conditions from {prev_result_dir}")
+            else:
+                initial_conditions = None
+
+            prob = urbs.run_scenario(
+                input_path,
+                solver,
+                timesteps,
+                scenario,
+                window_result_dir,
+                dt,
+                objective,
+                plot_tuples=plot_tuples,
+                plot_sites_name=plot_sites_name,
+                plot_periods={"all": timesteps},
+                report_tuples=report_tuples,
+                report_sites_name=report_sites_name,
+                initial_conditions=initial_conditions,
+                window_start=window_start,
+                window_end=window_end,
+                indexlist=indexlist,
+            )
+
+            print(dir(prob))
+
 # Execute selected mode
 if args.mode == "perfect":
     print("Running in perfect foresight mode")
     run_perfect_foresight()
+elif args.mode == "rolling":
+    print("Running in rolling horizon mode")
+    run_rolling_horizon(start_year=2024, end_year=2050, step=1)
+
 else:
-    print(f"Running in rolling horizon mode (window={args.window} years)")
-    run_rolling_horizon(window_length=args.window)
+    print(f"Running in myopic mode (window={args.window} years)")
+    run_myopic(window_length=args.window)
 
 print("\nSimulation completed successfully!")

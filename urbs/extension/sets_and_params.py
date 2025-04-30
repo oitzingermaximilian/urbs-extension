@@ -367,6 +367,12 @@ def apply_sets_and_params(m, data_urbsextensionv1):
     # param for gamma
     m.gamma_sec = pyomo.Param(initialize=1e10)
 
+    m.secondary_cap_carryover = pyomo.Param(
+        m.location,
+        m.tech,
+        initialize=initialize_param("Initial_secondary_cap", default_value=0)
+    )
+
     ##########----------end EEM Addition-----------###############
     ##########----------    urbs-scrap  -----------###############
     m.f_scrap = pyomo.Param(

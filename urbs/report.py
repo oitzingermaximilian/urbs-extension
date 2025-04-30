@@ -37,6 +37,7 @@ def report(instance, filename, report_tuples=None, report_sites_name={}):
         decomdf,
         inst_processes_time,
         df_total_co2,
+        secondary_cap_df
     ) = get_constants(instance)
 
     # create spreadsheet writer object
@@ -57,6 +58,7 @@ def report(instance, filename, report_tuples=None, report_sites_name={}):
         decomdf.to_excel(writer, sheet_name="decom")
         inst_processes_time.to_excel(writer, sheet_name="inst_process")
         df_total_co2.to_excel(writer, sheet_name="total_co2")
+        secondary_cap_df.to_excel(writer, sheet_name="secondary_cap_sum")
 
         #################################################################################
 

@@ -130,8 +130,8 @@ class CalculateYearlyEUSecondary(AbstractConstraint):
         eu_secondary_cost_value = (
             m.EU_secondary_costs[stf, location, tech]
             - m.pricereduction_sec[stf, location, tech]
-            + m.cost_scrap[stf, location, tech]
         ) * m.capacity_ext_eusecondary[stf, location, tech]
+        +m.cost_scrap[stf, location, tech]
         # print(f"Debug: STF = {stf}, Location = {location}, Tech = {tech}")
         # print(f"Total Yearly EU Secondary Cost = {eu_secondary_cost_value}")
         return m.costs_EU_secondary[stf, location, tech] == eu_secondary_cost_value

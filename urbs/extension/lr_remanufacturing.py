@@ -36,9 +36,9 @@ class costsavings_constraint_sec(AbstractConstraint):
             m.P_sec[n, tech, location] * m.BD_sec[stf, location, tech, n]
             for n in m.nsteps_sec
         )
-        # print(
-        #    f"Calculated pricereduction for {stf}, {location}, {tech}: {pricereduction_value_sec}"
-        # )
+        print(
+            f"Calculated pricereduction for {stf}, {location}, {tech}: {pricereduction_value_sec}"
+        )
 
         return m.pricereduction_sec[stf, location, tech] == pricereduction_value_sec
 
@@ -114,57 +114,35 @@ class relation_pnew_to_pprior_constraint_sec(AbstractConstraint):
 class q_perstep_constraint_sec(AbstractConstraint):
     def apply_rule(self, m, stf, location, tech):
         """
-        Enforces a per-step rule constraint for secondary use capacities for a specific
-        location and technology in a given year.
+                Ensures cumulative capacity (carryover + yearly extensions from y0 to y)
+                meets step requirements in year y.
+                """
+        y0 = min(m.stf)  # First model year
 
-        The constraint ensures that the cumulative sum of capacities (LHS) up to the
-        specified year meets or exceeds the calculated requirement based on selected
-        steps (RHS). Debugging information is included to confirm the correctness of
-        indices and computation values.
+        # LHS = Carryover (only added once) + sum of extensions from y0 to stf
+        lhs = m.secondary_cap_carryover[location, tech]  # Pre-existing capacity
+        lhs += sum(
+            m.capacity_ext_eusecondary[year, location, tech]
+            for year in m.stf
+            if y0 <= year <= stf  # Explicitly sum from y0 to current year
+        )
 
-        Args:
-            m: The model object containing system parameters and constraints.
-            stf: The time step
-            location: The location under consideration for secondary use.
-            tech: The technology under consideration for secondary use.
-
-        Returns:
-            bool: True if the constraint is satisfied, False otherwise.
-        """
-        lhs_cumulative_sum_sec = 0  # Reset LHS for each year
-        rhs_value_sec = 0  # Reset RHS for each year
-
-        # Debugging: Check if the indices are correct
-        # print(
-        #    f"Running q_perstep_rule_sec for stf={stf}, location={location}, tech={tech}"
-        # )
-
-        # Update cumulative sum for LHS (only for the current year)
-        for year in m.stf:
-            if year <= stf:  # Accumulate up to the current year (stf)
-                try:
-                    lhs_cumulative_sum_sec += m.capacity_ext_eusecondary[
-                        year, location, tech
-                    ]
-                except KeyError:
-                    print(
-                        f"KeyError: capacity_ext_eusecondary[{year}, {location}, {tech}]"
-                    )
-                    raise
-
-        # Calculate RHS based on selected stages (only for the current year)
-        rhs_value_sec = sum(
+        # RHS = Sum of required steps for current year
+        rhs = sum(
             m.BD_sec[stf, location, tech, n] * m.capacityperstep_sec[n, location, tech]
             for n in m.nsteps_sec
         )
 
-        # Debug: Print LHS and selected RHS value for each year
-        # print(
-        #    f"Step {stf}: LHS cumulative sum = {lhs_cumulative_sum_sec}, RHS value = {rhs_value_sec}"
-        # )
+        # Debug output
+        print(
+            f"Year {stf} ({location}, {tech}):\n"
+            f"  Carryover: {m.secondary_cap_carryover[location, tech]}\n"
+            f"  Extensions ({y0}-{stf}): {[m.capacity_ext_eusecondary[y, location, tech] for y in m.stf if y0 <= y <= stf]}\n"
+            f"  Total LHS: {lhs}\n"
+            f"  RHS: {rhs} (Steps: {[m.capacityperstep_sec[n, location, tech] for n in m.nsteps_sec]})"
+        )
 
-        # Return the constraint for this specific year
-        return lhs_cumulative_sum_sec >= rhs_value_sec
+        return lhs >= rhs
 
 
 class upper_bound_z_constraint_sec(AbstractConstraint):
