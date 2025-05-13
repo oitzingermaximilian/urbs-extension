@@ -370,7 +370,7 @@ def apply_sets_and_params(m, data_urbsextensionv1):
     m.secondary_cap_carryover = pyomo.Param(
         m.location,
         m.tech,
-        initialize=initialize_param("Initial_secondary_cap", default_value=0)
+        initialize=initialize_param("Initial_secondary_cap", default_value=0),
     )
 
     ##########----------end EEM Addition-----------###############

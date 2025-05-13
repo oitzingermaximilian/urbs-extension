@@ -79,10 +79,14 @@ def get_constants(instance):
         ],
     )
     # print("cext", cext)
-    secondary_cap_df = get_entities(instance,["capacity_ext_eusecondary"])
-    secondary_cap_df.sort_values("stf").groupby(["location", "tech"], as_index=False).last()
+    secondary_cap_df = get_entities(instance, ["capacity_ext_eusecondary"])
+    secondary_cap_df.sort_values("stf").groupby(
+        ["location", "tech"], as_index=False
+    ).last()
     # Compute cumulative sum per (location, tech)
-    secondary_cap_df["cumulative"] = secondary_cap_df.groupby(["location", "tech"])["capacity_ext_eusecondary"].cumsum()
+    secondary_cap_df["cumulative"] = secondary_cap_df.groupby(["location", "tech"])[
+        "capacity_ext_eusecondary"
+    ].cumsum()
     print(secondary_cap_df)
 
     bext = get_entity(instance, "balance_ext")
@@ -101,8 +105,9 @@ def get_constants(instance):
     # print("capacity ext total", capacity_ext_total)
     e_pro_out_df = get_entity(instance, "e_pro_out")
     e_pro_in_df = get_entity(instance, "e_pro_in")
-    df_e_pro_in_grouped = e_pro_in_df.groupby(["stf", "sit", "pro", "com"]).sum().reset_index()
-
+    df_e_pro_in_grouped = (
+        e_pro_in_df.groupby(["stf", "sit", "pro", "com"]).sum().reset_index()
+    )
 
     # print("e pro out df", e_pro_out_df)
     scrapdf = get_entity(instance, "capacity_scrap_total")
@@ -111,11 +116,20 @@ def get_constants(instance):
     #####Process df's to be used in report sheets
 
     ####us_co2
-    e_pro_out_co2 = e_pro_out_df.loc[e_pro_out_df.index.get_level_values('com') == 'CO2']
+    e_pro_out_co2 = e_pro_out_df.loc[
+        e_pro_out_df.index.get_level_values("com") == "CO2"
+    ]
     co2_df = e_pro_out_co2.reset_index()
-    co2_df.columns = ['tm', 'stf', 'sit', 'pro', 'com', 'value']  # Rename last column for clarity
-    grouped_co2 = co2_df.groupby(['stf', 'sit', 'pro'], as_index=False)['value'].sum()
-    grouped_co2 = grouped_co2.sort_values(by=['stf', 'sit', 'pro'])
+    co2_df.columns = [
+        "tm",
+        "stf",
+        "sit",
+        "pro",
+        "com",
+        "value",
+    ]  # Rename last column for clarity
+    grouped_co2 = co2_df.groupby(["stf", "sit", "pro"], as_index=False)["value"].sum()
+    grouped_co2 = grouped_co2.sort_values(by=["stf", "sit", "pro"])
 
     ####extension_balance
     # Filter e_pro_out_df for 'Elec'
@@ -193,8 +207,10 @@ def get_constants(instance):
 
     # Group by 'Stf' (year)
 
-    combined_balance = combined_balance.groupby(["Stf", "Site", "Process"]).sum().reset_index()
-    combined_balance = combined_balance.drop(columns=['Timestep'])
+    combined_balance = (
+        combined_balance.groupby(["Stf", "Site", "Process"]).sum().reset_index()
+    )
+    combined_balance = combined_balance.drop(columns=["Timestep"])
     # Display the final DataFrame
     # print(combined_balance)
 
@@ -309,7 +325,7 @@ def get_constants(instance):
         decomdf,
         inst_processes_time,
         secondary_cap_df,
-        df_e_pro_in_grouped
+        df_e_pro_in_grouped,
     )
 
 

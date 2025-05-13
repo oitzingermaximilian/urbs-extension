@@ -694,7 +694,6 @@ def slice_data_for_window(data, window_start, window_end, initial_conditions):
                     )
                     print(f"Set CO2 limit to inf for years {window_start}–{window_end}")
 
-
                 # Add Discount Rate = 0.03 for window_start year
                 if (
                     "Discount rate" not in sliced_df.index.get_level_values("Property")
@@ -786,8 +785,6 @@ def sliced_dataurbsextensionv1(
             tech: initial_conditions["Total Cap Sec"].get(("EU27", tech), 0)
             for tech in tech_to_update
         }
-
-
 
         # Update technologies_dict with filtered values
         for tech in tech_to_update:

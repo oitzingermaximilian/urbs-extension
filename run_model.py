@@ -25,9 +25,8 @@ def read_carry_over_from_excel(result_path, scenario_name):
     cost_sheet = pd.read_excel(filepath, sheet_name="extension_cost")
     co2_sheet = pd.read_excel(filepath, sheet_name="us_co2")
 
-
     # Forward fill to clean up NaNs
-    for df in [cap_sheet, stock_sheet, dec_sheet,detailed_cap_sheet]:
+    for df in [cap_sheet, stock_sheet, dec_sheet, detailed_cap_sheet]:
         df["stf"] = df["stf"].fillna(method="ffill")
         if "location" in df.columns:
             df["location"] = df["location"].fillna(method="ffill")
@@ -41,20 +40,27 @@ def read_carry_over_from_excel(result_path, scenario_name):
         "capacity_ext_eusecondary",
         "capacity_ext_stock",
         "capacity_ext_stock_imported",
-        "newly_added_capacity"
+        "newly_added_capacity",
     ]
     carryovers = {}
 
     all_years = sorted(set(cap_sheet["stf"].dropna().unique()))
 
-
     # Group CO2 by year, sit, and process
-    co2_grouped = co2_sheet.groupby(["stf", "sit", "pro"], as_index=False)["value"].sum()
-    balance_grouped = balance_sheet.groupby(["Stf", "Site", "Process"], as_index=False)["Value"].sum()
-    e_pro_in_grouped = e_pro_in_sheet.groupby(["stf", "sit", "pro","com"], as_index=False)["e_pro_in"].sum()
+    co2_grouped = co2_sheet.groupby(["stf", "sit", "pro"], as_index=False)[
+        "value"
+    ].sum()
+    balance_grouped = balance_sheet.groupby(["Stf", "Site", "Process"], as_index=False)[
+        "Value"
+    ].sum()
+    e_pro_in_grouped = e_pro_in_sheet.groupby(
+        ["stf", "sit", "pro", "com"], as_index=False
+    )["e_pro_in"].sum()
 
     # Group costs by year and process
-    cost_grouped = cost_sheet.groupby(["stf", "pro"], as_index=False)["Total_Cost"].sum()
+    cost_grouped = cost_sheet.groupby(["stf", "pro"], as_index=False)[
+        "Total_Cost"
+    ].sum()
 
     for year in all_years:
         cap_year = cap_sheet[cap_sheet["stf"] == year]
@@ -65,10 +71,9 @@ def read_carry_over_from_excel(result_path, scenario_name):
         co2_year = co2_grouped[co2_grouped["stf"] == year]
         cost_year = cost_grouped[cost_grouped["stf"] == year]
         scrap_year = scrap_sheet[scrap_sheet["stf"] == year]
-        balance_year = balance_grouped[balance_grouped["Stf"]==year]
+        balance_year = balance_grouped[balance_grouped["Stf"] == year]
         e_pro_in_year = e_pro_in_grouped[e_pro_in_grouped["stf"] == year]
         detail_year = detailed_cap_sheet[detailed_cap_sheet["stf"] == year]
-
 
         carryovers[int(year)] = {
             "Installed_Capacity_Q_s": {
@@ -88,12 +93,10 @@ def read_carry_over_from_excel(result_path, scenario_name):
                 for _, row in sec_year.iterrows()
             },
             "CO2_emissions": {
-                (row["sit"], row["pro"]): row["value"]
-                for _, row in co2_year.iterrows()
+                (row["sit"], row["pro"]): row["value"] for _, row in co2_year.iterrows()
             },
             "Total_Cost": {
-                row["pro"]: row["Total_Cost"]
-                for _, row in cost_year.iterrows()
+                row["pro"]: row["Total_Cost"] for _, row in cost_year.iterrows()
             },
             "Total_Scrap": {
                 (row["location"], row["tech"]): row["capacity_scrap_total"]
@@ -136,8 +139,9 @@ def read_carry_over_from_excel(result_path, scenario_name):
 
     return carryovers  # dict of year → carryover types
 
+
 def write_carryovers_to_excel(all_initial_conditions, output_path):
-    with pd.ExcelWriter(output_path, engine='xlsxwriter') as writer:
+    with pd.ExcelWriter(output_path, engine="xlsxwriter") as writer:
         for var_name, data in all_initial_conditions.items():
             records = []
             for (year, key), (win_idx, value) in data.items():
@@ -159,6 +163,7 @@ def write_carryovers_to_excel(all_initial_conditions, output_path):
 
             df = pd.DataFrame(records)
             df.to_excel(writer, sheet_name=var_name[:31], index=False)
+
 
 # Add command-line argument parsing
 parser = argparse.ArgumentParser(
@@ -273,59 +278,57 @@ def run_perfect_foresight():
 
 
 def run_myopic(window_length=5):
-#    for scenario_name, scenario in scenarios:
-        total_years = 27
-        windows = [
-            (2024 + i, 2024 + i + window_length - 1)
-            for i in range(0, total_years, window_length)
-        ]
+    #    for scenario_name, scenario in scenarios:
+    total_years = 27
+    windows = [
+        (2024 + i, 2024 + i + window_length - 1)
+        for i in range(0, total_years, window_length)
+    ]
 
-        for i, (window_start, window_end) in enumerate(windows):
-            print(
-                f"\nRunning window {i + 1}/{len(windows)}: {window_start}-{window_end}"
+    for i, (window_start, window_end) in enumerate(windows):
+        print(f"\nRunning window {i + 1}/{len(windows)}: {window_start}-{window_end}")
+        window_result_dir = os.path.join(
+            result_dir, f"window_{window_start}_{window_end}"
+        )
+        os.makedirs(window_result_dir, exist_ok=True)
+
+        indexlist = list(range(window_start, window_end + 1))
+        (offset, length) = (0, 12)
+        timesteps = range(offset, offset + length + 1)
+
+        # Load carry-over data from the previous window
+        if i > 0:
+            prev_window_start, prev_window_end = windows[i - 1]
+            prev_result_dir = os.path.join(
+                result_dir, f"window_{prev_window_start}_{prev_window_end}"
             )
-            window_result_dir = os.path.join(
-                result_dir, f"window_{window_start}_{window_end}"
+            initial_conditions = read_carry_over_from_excel(
+                prev_result_dir, scenario_name, window_start
             )
-            os.makedirs(window_result_dir, exist_ok=True)
+            print(initial_conditions)
+        else:
+            initial_conditions = None
 
-            indexlist = list(range(window_start, window_end + 1))
-            (offset, length) = (0, 12)
-            timesteps = range(offset, offset + length + 1)
+        prob = urbs.run_scenario(
+            input_path,
+            solver,
+            timesteps,
+            scenario,
+            window_result_dir,
+            dt,
+            objective,
+            plot_tuples=plot_tuples,
+            plot_sites_name=plot_sites_name,
+            plot_periods={"all": timesteps},
+            report_tuples=report_tuples,
+            report_sites_name=report_sites_name,
+            initial_conditions=initial_conditions,
+            window_start=window_start,
+            window_end=window_end,
+            indexlist=indexlist,
+        )
 
-            # Load carry-over data from the previous window
-            if i > 0:
-                prev_window_start, prev_window_end = windows[i - 1]
-                prev_result_dir = os.path.join(
-                    result_dir, f"window_{prev_window_start}_{prev_window_end}"
-                )
-                initial_conditions = read_carry_over_from_excel(
-                    prev_result_dir, scenario_name, window_start
-                )
-                print(initial_conditions)
-            else:
-                initial_conditions = None
-
-            prob = urbs.run_scenario(
-                input_path,
-                solver,
-                timesteps,
-                scenario,
-                window_result_dir,
-                dt,
-                objective,
-                plot_tuples=plot_tuples,
-                plot_sites_name=plot_sites_name,
-                plot_periods={"all": timesteps},
-                report_tuples=report_tuples,
-                report_sites_name=report_sites_name,
-                initial_conditions=initial_conditions,
-                window_start=window_start,
-                window_end=window_end,
-                indexlist=indexlist,
-            )
-
-            print(dir(prob))
+        print(dir(prob))
 
 
 def run_rolling_horizon(start_year=2024, end_year=2050, step=1):
@@ -340,8 +343,12 @@ def run_rolling_horizon(start_year=2024, end_year=2050, step=1):
             current_start += step
 
         for i, (window_start, window_end) in enumerate(windows):
-            print(f"\nRunning window {i + 1}/{len(windows)}: {window_start}-{window_end}")
-            window_result_dir = os.path.join(result_dir, f"rolling_{window_start}_to_{window_end}")
+            print(
+                f"\nRunning window {i + 1}/{len(windows)}: {window_start}-{window_end}"
+            )
+            window_result_dir = os.path.join(
+                result_dir, f"rolling_{window_start}_to_{window_end}"
+            )
             os.makedirs(window_result_dir, exist_ok=True)
 
             indexlist = list(range(window_start, window_end + 1))
@@ -350,17 +357,20 @@ def run_rolling_horizon(start_year=2024, end_year=2050, step=1):
             # Load carry-over from previous window if not the first
             if i > 0:
                 prev_window_start, _ = windows[i - 1]
-                prev_result_dir = os.path.join(result_dir, f"rolling_{prev_window_start}_to_{end_year}")
+                prev_result_dir = os.path.join(
+                    result_dir, f"rolling_{prev_window_start}_to_{end_year}"
+                )
 
                 carryovers_by_year = read_carry_over_from_excel(
-                    result_path=prev_result_dir,
-                    scenario_name=scenario_name
+                    result_path=prev_result_dir, scenario_name=scenario_name
                 )
 
                 carry_year = window_start - 1
                 if carry_year in carryovers_by_year:
                     initial_conditions = carryovers_by_year[carry_year]
-                    print(f"Loaded initial conditions from year {carry_year} in {prev_result_dir}")
+                    print(
+                        f"Loaded initial conditions from year {carry_year} in {prev_result_dir}"
+                    )
                 else:
                     print(f"No carryover data available for year {carry_year}")
                     initial_conditions = None
@@ -390,23 +400,28 @@ def run_rolling_horizon(start_year=2024, end_year=2050, step=1):
 
             # Now, after the scenario has run, capture the carryover data from the results
             carryovers_for_window = read_carry_over_from_excel(
-                result_path=window_result_dir,
-                scenario_name=scenario_name
+                result_path=window_result_dir, scenario_name=scenario_name
             )
 
             # You need to append the carryover data for this window to the `all_carryovers` dictionary
             for year, year_data in carryovers_for_window.items():
                 for var_name, data_dict in year_data.items():
                     for key, value in data_dict.items():
-                        all_carryovers[var_name][(year, key)] = (i, value)  # overwrite if exists
+                        all_carryovers[var_name][(year, key)] = (
+                            i,
+                            value,
+                        )  # overwrite if exists
 
             # Optionally, you can print or inspect the carryovers to verify they are being collected
-            print(f"Carryovers for window {window_start}-{window_end}: {carryovers_for_window}")
+            print(
+                f"Carryovers for window {window_start}-{window_end}: {carryovers_for_window}"
+            )
 
             # Once all windows are processed, you can now save all carryovers to Excel
             # Make sure to pass `all_carryovers` to the write function
         output_excel_path = os.path.join(result_dir, "output_carryovers.xlsx")
         write_carryovers_to_excel(all_carryovers, output_excel_path)
+
 
 # Execute selected mode
 if args.mode == "perfect":

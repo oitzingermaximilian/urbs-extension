@@ -47,7 +47,7 @@ def create_model(
     # Optional
     if not timesteps:
         timesteps = data["demand"].index.tolist()
-        print("timesteps:",timesteps)
+        print("timesteps:", timesteps)
 
     m = pyomo_model_prep(
         data, timesteps, window_start, window_end
@@ -628,7 +628,7 @@ def res_vertex_rule(m, tm, stf, sit, com, com_type):
             if (tm, stf, sit, tech) in m.balance_ext:
                 power_surplus += m.balance_ext[tm, stf, sit, tech]
 
-    #print(power_surplus)
+    # print(power_surplus)
     # if com is a stock commodity, the commodity source term e_co_stock
     # can supply a possibly negative power_surplus
     if com in m.com_stock:
@@ -648,7 +648,7 @@ def res_vertex_rule(m, tm, stf, sit, com, com_type):
 
             # Subtract demand from power surplus
             power_surplus -= demand_value
-            #print(power_surplus)
+            # print(power_surplus)
         except KeyError:
             pass
 

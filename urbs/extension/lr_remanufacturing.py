@@ -114,9 +114,9 @@ class relation_pnew_to_pprior_constraint_sec(AbstractConstraint):
 class q_perstep_constraint_sec(AbstractConstraint):
     def apply_rule(self, m, stf, location, tech):
         """
-                Ensures cumulative capacity (carryover + yearly extensions from y0 to y)
-                meets step requirements in year y.
-                """
+        Ensures cumulative capacity (carryover + yearly extensions from y0 to y)
+        meets step requirements in year y.
+        """
         y0 = min(m.stf)  # First model year
 
         # LHS = Carryover (only added once) + sum of extensions from y0 to stf
