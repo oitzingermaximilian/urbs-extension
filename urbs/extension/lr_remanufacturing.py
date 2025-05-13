@@ -98,12 +98,13 @@ class relation_pnew_to_pprior_constraint_sec(AbstractConstraint):
             time step.
         """
         if stf == value(m.y0):
+            return pyomo.Constraint.Skip
             # Skip for the first time step
-            p_r_new = m.pricereduction_sec[stf, location, tech]
-            p_r_prior = m.pricereduction_sec_init[location, tech]
-            print("p_r_prior",p_r_prior)
+            #p_r_new = m.pricereduction_sec[stf, location, tech]
+            #p_r_prior = m.pricereduction_sec_init[location, tech]
+            #print("p_r_prior",p_r_prior)
 
-            return p_r_new >= p_r_prior
+            #return p_r_new >= p_r_prior
 
         else:
             # Debug: Print the comparison between current and previous pricereduction
