@@ -29,15 +29,15 @@ def report(instance, filename, report_tuples=None, report_sites_name={}):
         updated_cpro,
         cost_df_combined,
         capacity_ext_total,
-        df_co2,
+        grouped_co2,
         combined_balance,
         decisionvalues_pri,
         decisionvalues_sec,
         scrapdf,
         decomdf,
         inst_processes_time,
-        df_total_co2,
-        secondary_cap_df
+        secondary_cap_df,
+        df_e_pro_in_grouped
     ) = get_constants(instance)
 
     # create spreadsheet writer object
@@ -52,13 +52,13 @@ def report(instance, filename, report_tuples=None, report_sites_name={}):
         cost_df_combined.to_excel(writer, sheet_name="extension_cost")
         updated_cpro.to_excel(writer, sheet_name="extension_total_caps")
         combined_balance.to_excel(writer, sheet_name="extension_balance", index=False)
-        df_co2.to_excel(writer, sheet_name="us_co2", index=False)
+        grouped_co2.to_excel(writer, sheet_name="us_co2", index=False)
         capacity_ext_total.to_excel(writer, sheet_name="extension_only_totalcapacity")
         scrapdf.to_excel(writer, sheet_name="scrap")
         decomdf.to_excel(writer, sheet_name="decom")
         inst_processes_time.to_excel(writer, sheet_name="inst_process")
-        df_total_co2.to_excel(writer, sheet_name="total_co2")
         secondary_cap_df.to_excel(writer, sheet_name="secondary_cap_sum")
+        df_e_pro_in_grouped.to_excel(writer, sheet_name="e_pro_in")
 
         #################################################################################
 

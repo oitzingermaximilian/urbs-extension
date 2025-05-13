@@ -100,6 +100,10 @@ def get_constants(instance):
     capacity_ext_total = get_entity(instance, "capacity_ext")
     # print("capacity ext total", capacity_ext_total)
     e_pro_out_df = get_entity(instance, "e_pro_out")
+    e_pro_in_df = get_entity(instance, "e_pro_in")
+    df_e_pro_in_grouped = e_pro_in_df.groupby(["stf", "sit", "pro", "com"]).sum().reset_index()
+
+
     # print("e pro out df", e_pro_out_df)
     scrapdf = get_entity(instance, "capacity_scrap_total")
     decomdf = get_entity(instance, "capacity_dec")
@@ -107,16 +111,11 @@ def get_constants(instance):
     #####Process df's to be used in report sheets
 
     ####us_co2
-    e_pro_out_co2 = {
-        key: value for key, value in e_pro_out_df.items() if key[-1] == "CO2"
-    }
-    df_co2 = pd.DataFrame(list(e_pro_out_co2.items()), columns=["Index", "Value"])
-
-    # Sum all values to get total CO₂
-    total_co2_value = df_co2["Value"].sum()
-
-    # Optional: wrap it in a one-row DataFrame if needed
-    df_total_co2 = pd.DataFrame({"Total_CO2": [total_co2_value]})
+    e_pro_out_co2 = e_pro_out_df.loc[e_pro_out_df.index.get_level_values('com') == 'CO2']
+    co2_df = e_pro_out_co2.reset_index()
+    co2_df.columns = ['tm', 'stf', 'sit', 'pro', 'com', 'value']  # Rename last column for clarity
+    grouped_co2 = co2_df.groupby(['stf', 'sit', 'pro'], as_index=False)['value'].sum()
+    grouped_co2 = grouped_co2.sort_values(by=['stf', 'sit', 'pro'])
 
     ####extension_balance
     # Filter e_pro_out_df for 'Elec'
@@ -192,14 +191,10 @@ def get_constants(instance):
     # Combine the data
     combined_balance = pd.concat([df_Elec, ext_process], ignore_index=True)
 
-    # Group by 'Stf' (year) and sort by 'Timestep' within each year
-    combined_balance = combined_balance.sort_values(by=["Stf", "Timestep"]).reset_index(
-        drop=True
-    )
+    # Group by 'Stf' (year)
 
-    # Select relevant columns
-    combined_balance = combined_balance[["Timestep", "Stf", "Site", "Process", "Value"]]
-
+    combined_balance = combined_balance.groupby(["Stf", "Site", "Process"]).sum().reset_index()
+    combined_balance = combined_balance.drop(columns=['Timestep'])
     # Display the final DataFrame
     # print(combined_balance)
 
@@ -306,15 +301,15 @@ def get_constants(instance):
         updated_cpro,
         cost_df_combined,
         capacity_ext_total,
-        df_co2,
+        grouped_co2,
         combined_balance,
         decisionvalues_pri,
         decisionvalues_sec,
         scrapdf,
         decomdf,
         inst_processes_time,
-        df_total_co2,
-        secondary_cap_df
+        secondary_cap_df,
+        df_e_pro_in_grouped
     )
 
 
