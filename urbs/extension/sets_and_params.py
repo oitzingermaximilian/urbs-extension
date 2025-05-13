@@ -414,3 +414,10 @@ def apply_sets_and_params(m, data_urbsextensionv1):
     )
 
     ##########----------end urbs-scrap  -----------###############
+    # added for carry over.
+    m.pricereduction_sec_init = pyomo.Param(
+        m.location,
+        m.tech,
+        initialize=initialize_param("price_reduction_init", default_value=0),
+        doc="price_reduction_init",
+    )

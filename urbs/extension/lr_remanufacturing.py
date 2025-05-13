@@ -99,7 +99,12 @@ class relation_pnew_to_pprior_constraint_sec(AbstractConstraint):
         """
         if stf == value(m.y0):
             # Skip for the first time step
-            return pyomo.Constraint.Skip
+            p_r_new = m.pricereduction_sec[stf, location, tech]
+            p_r_prior = m.pricereduction_sec_init[location, tech]
+            print("p_r_prior",p_r_prior)
+
+            return p_r_new >= p_r_prior
+
         else:
             # Debug: Print the comparison between current and previous pricereduction
             # print(
@@ -120,7 +125,7 @@ class q_perstep_constraint_sec(AbstractConstraint):
         y0 = min(m.stf)  # First model year
 
         # LHS = Carryover (only added once) + sum of extensions from y0 to stf
-        lhs = m.secondary_cap_carryover[location, tech]  # Pre-existing capacity
+        lhs = m.secondary_cap_carryover[location, tech] # Pre-existing capacity
         lhs += sum(
             m.capacity_ext_eusecondary[year, location, tech]
             for year in m.stf

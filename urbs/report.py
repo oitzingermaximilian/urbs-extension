@@ -38,6 +38,7 @@ def report(instance, filename, report_tuples=None, report_sites_name={}):
         inst_processes_time,
         secondary_cap_df,
         df_e_pro_in_grouped,
+        pricereduction_sec
     ) = get_constants(instance)
 
     # create spreadsheet writer object
@@ -59,6 +60,7 @@ def report(instance, filename, report_tuples=None, report_sites_name={}):
         inst_processes_time.to_excel(writer, sheet_name="inst_process")
         secondary_cap_df.to_excel(writer, sheet_name="secondary_cap_sum")
         df_e_pro_in_grouped.to_excel(writer, sheet_name="e_pro_in")
+        pricereduction_sec.to_excel(writer, sheet_name="pricereduction_sec")
 
         #################################################################################
 

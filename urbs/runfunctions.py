@@ -786,6 +786,11 @@ def sliced_dataurbsextensionv1(
             for tech in tech_to_update
         }
 
+        filtered_pricereduction_sec_start = {
+            tech: initial_conditions["Pricereduction"].get(("EU27", tech), 0)
+            for tech in tech_to_update
+        }
+
         # Update technologies_dict with filtered values
         for tech in tech_to_update:
             tech_key = tech
@@ -804,6 +809,10 @@ def sliced_dataurbsextensionv1(
                 current_cumulative_sec = data_urbsextensionv1["technologies"]["EU27"][
                     tech_key
                 ].get("Initial_secondary_cap", "Not Set")
+
+                current_pricereduction_sec = data_urbsextensionv1["technologies"]["EU27"][
+                    tech_key
+                ].get("price_reduction_init", "Not Set")
 
                 # Update InitialCapacity
                 new_capacity = filtered_installed_capacity.get(tech, 0)
@@ -828,6 +837,11 @@ def sliced_dataurbsextensionv1(
                     "Initial_secondary_cap"
                 ] = new_cap_ciumulative
 
+                new_pricereduction = filtered_pricereduction_sec_start.get(tech, 0)
+                data_urbsextensionv1["technologies"]["EU27"][tech_key][
+                    "price_reduction_init"
+                ] = new_pricereduction
+
                 # Print the updates
                 print(f"Updated {tech_key}:")
                 print(f"  InitialCapacity: {current_capacity} -> {new_capacity}")
@@ -837,6 +851,9 @@ def sliced_dataurbsextensionv1(
                 )
                 print(
                     f"  Initial_secondary_cap: {current_cumulative_sec} -> {new_cap_ciumulative}"
+                )
+                print(
+                    f"  price_reduction_init: {current_pricereduction_sec} -> {new_pricereduction}"
                 )
             else:
                 print(

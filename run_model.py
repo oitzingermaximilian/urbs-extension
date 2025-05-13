@@ -5,6 +5,7 @@ import urbs
 from datetime import date
 import pandas as pd
 from collections import defaultdict
+from urbs_auto_plotting import plot_from_excel
 
 
 def read_carry_over_from_excel(result_path, scenario_name):
@@ -24,9 +25,10 @@ def read_carry_over_from_excel(result_path, scenario_name):
     e_pro_in_sheet = pd.read_excel(filepath, sheet_name="e_pro_in")
     cost_sheet = pd.read_excel(filepath, sheet_name="extension_cost")
     co2_sheet = pd.read_excel(filepath, sheet_name="us_co2")
+    pricereduction_sec_sheet = pd.read_excel(filepath, sheet_name="pricereduction_sec")
 
     # Forward fill to clean up NaNs
-    for df in [cap_sheet, stock_sheet, dec_sheet, detailed_cap_sheet]:
+    for df in [cap_sheet, stock_sheet, dec_sheet, detailed_cap_sheet,secondary_cap,pricereduction_sec_sheet,scrap_sheet]:
         df["stf"] = df["stf"].fillna(method="ffill")
         if "location" in df.columns:
             df["location"] = df["location"].fillna(method="ffill")
@@ -74,6 +76,7 @@ def read_carry_over_from_excel(result_path, scenario_name):
         balance_year = balance_grouped[balance_grouped["Stf"] == year]
         e_pro_in_year = e_pro_in_grouped[e_pro_in_grouped["stf"] == year]
         detail_year = detailed_cap_sheet[detailed_cap_sheet["stf"] == year]
+        pricereduction_sec_year = pricereduction_sec_sheet[pricereduction_sec_sheet["stf"] == year]
 
         carryovers[int(year)] = {
             "Installed_Capacity_Q_s": {
@@ -101,6 +104,10 @@ def read_carry_over_from_excel(result_path, scenario_name):
             "Total_Scrap": {
                 (row["location"], row["tech"]): row["capacity_scrap_total"]
                 for _, row in scrap_year.iterrows()
+            },
+            "Pricereduction": {
+                (row["location"], row["tech"]): row["pricereduction_sec"]
+                for _, row in pricereduction_sec_year.iterrows()
             },
             "Balance": {
                 (row["Site"], row["Process"]): row["Value"]
@@ -419,8 +426,10 @@ def run_rolling_horizon(start_year=2024, end_year=2050, step=1):
 
             # Once all windows are processed, you can now save all carryovers to Excel
             # Make sure to pass `all_carryovers` to the write function
-        output_excel_path = os.path.join(result_dir, "output_carryovers.xlsx")
-        write_carryovers_to_excel(all_carryovers, output_excel_path)
+        output_filename = f"result_{scenario_name}.xlsx"  # Include scenario name in the file name
+        output_file_path = os.path.join(result_dir, output_filename)
+        write_carryovers_to_excel(all_carryovers, output_file_path)
+        #plot_from_excel(output_file_path) #ToDo enable when final
 
 
 # Execute selected mode
