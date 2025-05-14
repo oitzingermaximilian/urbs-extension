@@ -418,9 +418,6 @@ def run_scenario(
 
     # solve model and read results
     optim = SolverFactory("gurobi")  # cplex, glpk, gurobi, ...
-    optim.options["FeasibilityTol"] = 1e-4  # Toleranz für die Nebenbedingungen
-    optim.options["OptimalityTol"] = 1e-4  # Toleranz bei Zielfunktionsoptimalität
-    optim.options["IntFeasTol"] = 1e-4  # Toleranz für Ganzzahligkeit (nur bei MIP relevant)
     optim = setup_solver(optim, logfile=log_filename)
     result = optim.solve(prob, tee=True)
     # assert str(result.solver.termination_condition) == "optimal"
@@ -793,6 +790,21 @@ def sliced_dataurbsextensionv1(
             for tech in tech_to_update
         }
 
+        filtered_cap_prim_prior_start = {
+            tech: initial_conditions["capacity_ext_euprimary"].get(("EU27", tech), 0)
+            for tech in tech_to_update
+        }
+
+        filtered_cap_sec_prior_start = {
+            tech: initial_conditions["capacity_ext_eusecondary"].get(("EU27", tech), 0)
+            for tech in tech_to_update
+        }
+
+        filtered_cap_scrao_total_start = {
+            tech: initial_conditions["Total_Scrap"].get(("EU27", tech), 0)
+            for tech in tech_to_update
+        }
+
         # Update technologies_dict with filtered values
         for tech in tech_to_update:
             tech_key = tech
@@ -812,9 +824,20 @@ def sliced_dataurbsextensionv1(
                     tech_key
                 ].get("Initial_secondary_cap", "Not Set")
 
-                current_pricereduction_sec = data_urbsextensionv1["technologies"]["EU27"][
+                current_pricereduction_sec = data_urbsextensionv1["technologies"][
+                    "EU27"
+                ][tech_key].get("price_reduction_init", "Not Set")
+
+                current_capacity_ext_euprimary = data_urbsextensionv1["technologies"][
+                    "EU27"
+                ][tech_key].get("last_prim_cap", "Not Set")
+                current_capacity_ext_eusecondary = data_urbsextensionv1["technologies"][
+                    "EU27"
+                ][tech_key].get("last_sec_cap", "Not Set")
+
+                current_scrap_total = data_urbsextensionv1["technologies"]["EU27"][
                     tech_key
-                ].get("price_reduction_init", "Not Set")
+                ].get("capacity_scrap_total", "Not Set")
 
                 # Update InitialCapacity
                 new_capacity = filtered_installed_capacity.get(tech, 0)
@@ -844,6 +867,21 @@ def sliced_dataurbsextensionv1(
                     "price_reduction_init"
                 ] = new_pricereduction
 
+                new_last_prim_cap = filtered_cap_prim_prior_start.get(tech, 0)
+                data_urbsextensionv1["technologies"]["EU27"][tech_key][
+                    "last_prim_cap"
+                ] = new_last_prim_cap
+
+                new_last_sec_cap = filtered_cap_sec_prior_start.get(tech, 0)
+                data_urbsextensionv1["technologies"]["EU27"][tech_key][
+                    "last_sec_cap"
+                ] = new_last_sec_cap
+
+                new_cap_scrap_total = filtered_cap_scrao_total_start.get(tech, 0)
+                data_urbsextensionv1["technologies"]["EU27"][tech_key][
+                    "capacity_scrap_total"
+                ] = new_cap_scrap_total
+
                 # Print the updates
                 print(f"Updated {tech_key}:")
                 print(f"  InitialCapacity: {current_capacity} -> {new_capacity}")
@@ -857,6 +895,13 @@ def sliced_dataurbsextensionv1(
                 print(
                     f"  price_reduction_init: {current_pricereduction_sec} -> {new_pricereduction}"
                 )
+                print(
+                    f"  last_prim_cap: {current_capacity_ext_euprimary} -> {new_last_prim_cap}"
+                )
+                print(
+                    f"  last_sec_cap: {current_capacity_ext_eusecondary} -> {new_last_sec_cap}"
+                )
+                print(f"  scrap_total: {current_scrap_total} -> {new_cap_scrap_total}")
             else:
                 print(
                     f"Technology {tech_key} not found in data_urbsextensionv1['technologies']['EU27']."

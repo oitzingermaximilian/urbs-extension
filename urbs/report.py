@@ -38,7 +38,7 @@ def report(instance, filename, report_tuples=None, report_sites_name={}):
         inst_processes_time,
         secondary_cap_df,
         df_e_pro_in_grouped,
-        pricereduction_sec
+        pricereduction_sec,
     ) = get_constants(instance)
 
     # create spreadsheet writer object

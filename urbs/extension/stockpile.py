@@ -11,9 +11,20 @@ class AbstractConstraint(ABC):
 
 class CapacityExtGrowthRule(AbstractConstraint):
     def apply_rule(self, m, stf, location, tech):
-        if stf == value(m.y0):  # Use value() to evaluate m.y0
-            return pyomo.Constraint.Skip
+        if stf == value(m.y0):
+            print(
+                f"Running constraint CapacityExtGrowthRule for stf={stf} (start year)"
+            )
+            return (
+                m.capacity_ext[stf, location, tech]
+                == m.Installed_Capacity_Q_s[location, tech]
+                + m.capacity_ext_new[stf, location, tech]
+                - m.capacity_dec[stf, location, tech]
+            )
         else:
+            print(
+                f"Running constraint CapacityExtGrowthRule for stf={stf} (inside intervall)"
+            )
             return (
                 m.capacity_ext[stf, location, tech]
                 == m.capacity_ext[stf - 1, location, tech]
@@ -22,70 +33,37 @@ class CapacityExtGrowthRule(AbstractConstraint):
             )
 
 
-class InitialCapacityRule(AbstractConstraint):
-    def apply_rule(self, m, stf, location, tech):
-        if stf == value(m.y0):
-            capacity_eq1 = (
-                m.capacity_ext[stf, location, tech]
-                == m.Installed_Capacity_Q_s[location, tech]
-                + m.capacity_ext_new[stf, location, tech]
-                - m.capacity_dec[stf, location, tech]
-            )
-            print(
-                f"Initial Capacity for {tech} at {location} in year {stf}: {capacity_eq1}"
-            )
-            return capacity_eq1
-        else:
-            return pyomo.Constraint.Skip
-
-
 class CapacityExtNewRule(AbstractConstraint):
     def apply_rule(self, m, stf, location, tech):
-        capacity_eq2 = m.capacity_ext_new[stf, location, tech] == (
+        print(f"Running constraint CapacityExtNewRule for stf={stf}")
+
+        return m.capacity_ext_new[stf, location, tech] == (
             m.capacity_ext_imported[stf, location, tech]
             + m.capacity_ext_stockout[stf, location, tech]
             + m.capacity_ext_euprimary[stf, location, tech]
             + m.capacity_ext_eusecondary[stf, location, tech]
         )
-        # print(
-        #    f"Capacity Extension New for {tech} at {location} in year {stf}: {capacity_eq2}"
-        # )
-        return capacity_eq2
 
 
 class CapacityExtStockRule(AbstractConstraint):
     def apply_rule(self, m, stf, location, tech):
         if stf == value(m.y0):
-            return pyomo.Constraint.Skip
-        else:
-            capacity_eq3 = m.capacity_ext_stock[stf, location, tech] == (
-                m.capacity_ext_stock[stf - 1, location, tech]
-                + m.capacity_ext_stock_imported[stf, location, tech]
-                - m.capacity_ext_stockout[stf, location, tech]
-            )
-            # print(
-            #    f"Capacity Extension Stock for {tech} at {location} in year {stf}: {capacity_eq3}"
-            # )
-            return capacity_eq3
-
-
-class CapacityExtStockInitialRule(AbstractConstraint):
-    def apply_rule(self, m, stf, location, tech):
-        if stf == value(m.y0):
-            capacity_eq4 = m.capacity_ext_stock[stf, location, tech] == (
+            print(f"Running constraint CapacityExtStockRule for stf={stf} (start year)")
+            return m.capacity_ext_stock[stf, location, tech] == (
                 m.Existing_Stock_Q_stock[location, tech]
                 + m.capacity_ext_stock_imported[stf, location, tech]
                 - m.capacity_ext_stockout[stf, location, tech]
             )
-            # print(
-            #    f"Capacity Extension Stock Initial for {tech} at {location} in year {stf}: {capacity_eq4}"
-            # )
-            return capacity_eq4
         else:
-            return pyomo.Constraint.Skip
+            print(f"Running constraint CapacityExtStockRule for stf={stf}")
+            return m.capacity_ext_stock[stf, location, tech] == (
+                m.capacity_ext_stock[stf - 1, location, tech]
+                + m.capacity_ext_stock_imported[stf, location, tech]
+                - m.capacity_ext_stockout[stf, location, tech]
+            )
 
 
-class StockTurnoverRule(AbstractConstraint):
+class StockTurnoverRule(AbstractConstraint):  # NOTE disabled atm
     def apply_rule(self, m, stf, location, tech):
         valid_years = [2025, 2030, 2035, 2040, 2045]
 
@@ -113,7 +91,7 @@ class StockTurnoverRule(AbstractConstraint):
             return pyomo.Constraint.Skip
 
 
-class AntiDumpingMeasuresRule(AbstractConstraint):
+class AntiDumpingMeasuresRule(AbstractConstraint):  # NOTE disabled atm
     def apply_rule(self, m, stf, location, tech):
         rhs = m.anti_dumping_index[location, tech] * (
             m.capacity_ext_imported[stf, location, tech]
@@ -131,29 +109,48 @@ class AntiDumpingMeasuresRule(AbstractConstraint):
 class CapacityExtNewLimitRule(AbstractConstraint):
     def apply_rule(self, m, stf, location, tech):
         if stf == value(m.y0):
+            print(
+                f"Running constraint CapacityExtNewLimitRule for stf={stf} (start year)"
+            )
             cap_val = m.capacity_ext_new[stf, location, tech]
-            ext_val = ext_new_value = (
-                m.Q_ext_new[stf, location, tech] + m.capacity_dec_start[location, tech]
+            ext_val = (
+                m.Q_ext_new[
+                    stf, location, tech
+                ]  # + m.capacity_dec_start[location, tech]
             )
             return cap_val <= ext_val
         else:
+            print(f"Running constraint CapacityExtNewLimitRule for stf={stf}")
             capacity_value = m.capacity_ext_new[stf, location, tech]
             ext_new_value = (
                 m.Q_ext_new[stf, location, tech]
-                + m.capacity_dec[stf - 1, location, tech]
+                # + m.capacity_dec[stf - 1, location, tech]
             )
-
-            # print(
-            #    f"Debug: STF = {stf}, Location = {location}, Tech = {tech}, Capacity Solar New = {capacity_value}, max installable Capacity = {ext_new_value}"
-            # )
-
             return capacity_value <= ext_new_value
 
 
 class TimedelayEUPrimaryProductionRule(AbstractConstraint):
     def apply_rule(self, m, stf, location, tech):
-        if stf == value(m.y0):
+        if stf == 2024:
+            print(
+                f"Skipping TimedelayEUPrimaryProductionRule constraint for stf={stf} (global start year)"
+            )
             return pyomo.Constraint.Skip
+
+        elif stf == value(m.y0):
+            print(
+                f"Running constraint TimedelayEUPrimaryProductionRule for stf={stf} (start year)"
+            )
+            lhs = (
+                m.capacity_ext_euprimary[stf, location, tech]
+                - m.cap_prim_prior[location, tech]
+            )
+            rhs = (
+                m.deltaQ_EUprimary[location, tech]
+                + m.IR_EU_primary[location, tech] * m.cap_prim_prior[location, tech]
+            )
+            return lhs <= rhs
+
         else:
             lhs = (
                 m.capacity_ext_euprimary[stf, location, tech]
@@ -174,8 +171,26 @@ class TimedelayEUPrimaryProductionRule(AbstractConstraint):
 
 class TimedelayEUSecondaryProductionRule(AbstractConstraint):
     def apply_rule(self, m, stf, location, tech):
-        if stf == value(m.y0):
+        if stf == 2024:
+            print(
+                f"Skipping TimedelayEUSecondaryProductionRule constraint for stf={stf} (global start year)"
+            )
             return pyomo.Constraint.Skip
+
+        elif stf == value(m.y0):
+            print(
+                f"Running constraint TimedelayEUSecondaryProductionRule for stf={stf} (start year)"
+            )
+            lhs = (
+                m.capacity_ext_eusecondary[stf, location, tech]
+                - m.cap_sec_prior[location, tech]
+            )
+            rhs = (
+                m.deltaQ_EUsecondary[location, tech]
+                + m.IR_EU_secondary[location, tech] * m.cap_sec_prior[location, tech]
+            )
+            return lhs <= rhs
+
         else:
             lhs = (
                 m.capacity_ext_eusecondary[stf, location, tech]
@@ -194,7 +209,7 @@ class TimedelayEUSecondaryProductionRule(AbstractConstraint):
             return lhs <= rhs
 
 
-class Constraint1EUSecondaryToTotalRule(AbstractConstraint):
+class Constraint1EUSecondaryToTotalRule(AbstractConstraint):  # NOTE disabled atm
     def apply_rule(self, m, stf, location, tech):
         l_value = m.l[location, tech]
         if value(m.y0) <= stf - l_value:
@@ -218,7 +233,7 @@ class Constraint2EUSecondaryToTotalRule(AbstractConstraint):
             rhs = m.DCR_solar[stf, location, tech] * m.capacity_ext[stf, location, tech]
 
             # print(
-            #    f"Debug: STF = {stf}, Location = {location}, Tech = {tech}, LHS = {lhs}, RHS = {rhs}"
+            #   f"Debug: STF = {stf}, Location = {location}, Tech = {tech}, LHS = {lhs}, RHS = {rhs}"
             # )
 
             return lhs <= rhs
@@ -228,8 +243,17 @@ class Constraint2EUSecondaryToTotalRule(AbstractConstraint):
 
 class ConstraintEUPrimaryToTotalRule(AbstractConstraint):
     def apply_rule(self, m, stf, location, tech):
-        if stf == value(m.y0):
+        if stf == 2024:
+            print(
+                f"Skipping ConstraintEUPrimaryToTotalRule constraint for stf={stf} (global start year)"
+            )
             return pyomo.Constraint.Skip
+
+        if stf == value(m.y0):
+            lhs = m.capacity_ext_euprimary[stf, location, tech]
+            rhs = m.DR_primary[location, tech] * m.cap_prim_prior[location, tech]
+            return lhs >= rhs
+
         else:
             lhs = m.capacity_ext_euprimary[stf, location, tech]
             rhs = (
@@ -246,8 +270,17 @@ class ConstraintEUPrimaryToTotalRule(AbstractConstraint):
 
 class ConstraintEUSecondaryToSecondaryRule(AbstractConstraint):
     def apply_rule(self, m, stf, location, tech):
-        if stf == value(m.y0):
+        if stf == 2024:
+            print(
+                f"Skipping ConstraintEUSecondaryToSecondaryRule constraint for stf={stf} (global start year)"
+            )
             return pyomo.Constraint.Skip
+
+        if stf == value(m.y0):
+            lhs = m.capacity_ext_eusecondary[stf, location, tech]
+            rhs = m.DR_secondary[location, tech] * m.cap_sec_prior[location, tech]
+
+            return lhs >= rhs
         else:
             lhs = m.capacity_ext_eusecondary[stf, location, tech]
             rhs = (
@@ -276,15 +309,36 @@ class ConstraintMaxIntoStockRule(AbstractConstraint):
         return lhs <= rhs
 
 
+class ConstraintBatteryDemandRule(AbstractConstraint):
+    def apply_rule(self, m, stf, location, tech):
+        lhs = m.demand_bess[stf, location]
+        rhs = sum(
+            m.factor_bess[location, t] * m.capacity_ext_new[stf, location, t]
+            for t in m.tech
+            if t != "Batteries"
+        )
+        print(f"Caluclating battery demand for {stf}: demand = {rhs}")
+        return lhs == rhs
+
+
+class ConstraintBatteryCapRule(AbstractConstraint):
+    def apply_rule(self, m, stf, location, tech):
+        lhs = m.demand_bess[stf, location]
+        rhs = m.capacity_ext_new[stf, location, "Batteries"]
+
+        print(
+            f"Battery cap constraint for {stf}, {location}: lhs demand = {lhs}, rhs battery cap = {rhs}"
+        )
+        return lhs <= rhs
+
+
 def apply_stockpiling_constraints(m):
     constraints = [
         CapacityExtGrowthRule(),
-        InitialCapacityRule(),
         CapacityExtNewRule(),
         CapacityExtStockRule(),
-        CapacityExtStockInitialRule(),
         # StockTurnoverRule(),
-        AntiDumpingMeasuresRule(),
+        # AntiDumpingMeasuresRule(),
         CapacityExtNewLimitRule(),
         TimedelayEUPrimaryProductionRule(),
         TimedelayEUSecondaryProductionRule(),
@@ -293,6 +347,8 @@ def apply_stockpiling_constraints(m):
         ConstraintEUPrimaryToTotalRule(),
         ConstraintEUSecondaryToSecondaryRule(),
         ConstraintMaxIntoStockRule(),
+        ConstraintBatteryDemandRule(),
+        ConstraintBatteryCapRule(),
     ]
 
     for i, constraint in enumerate(constraints):

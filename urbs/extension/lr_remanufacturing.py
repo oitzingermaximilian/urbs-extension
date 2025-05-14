@@ -89,14 +89,18 @@ class relation_pnew_to_pprior_constraint_sec(AbstractConstraint):
             p_r_new = m.pricereduction_sec[stf, location, tech]
             p_r_prior = m.pricereduction_sec_init[location, tech]
             print(f"[Initial] stf={stf} == y0={value(m.y0)}: Using INIT condition")
-            print(f"    pricereduction_sec[{stf}, {location}, {tech}] >= pricereduction_sec_init[{location}, {tech}]")
-            return p_r_new == p_r_prior
+            print(
+                f"    pricereduction_sec[{stf}, {location}, {tech}] >= pricereduction_sec_init[{location}, {tech}]"
+            )
+            return p_r_new >= p_r_prior
 
         else:
             p_r_new = m.pricereduction_sec[stf, location, tech]
             p_r_prev = m.pricereduction_sec[stf - 1, location, tech]
             print(f"[Recursive] stf={stf}: Comparing with stf-1={stf - 1}")
-            print(f"    pricereduction_sec[{stf}, {location}, {tech}] >= pricereduction_sec[{stf - 1}, {location}, {tech}]")
+            print(
+                f"    pricereduction_sec[{stf}, {location}, {tech}] >= pricereduction_sec[{stf - 1}, {location}, {tech}]"
+            )
             return p_r_new >= p_r_prev
 
 
@@ -109,11 +113,10 @@ class q_perstep_constraint_sec(AbstractConstraint):
         y0 = min(m.stf)  # First model year
 
         # LHS = Carryover (only added once) + sum of extensions from y0 to stf
-        lhs = m.secondary_cap_carryover[location, tech] # Pre-existing capacity
-        lhs += sum(
+        lhs = m.secondary_cap_carryover[location, tech] + sum(
             m.capacity_ext_eusecondary[year, location, tech]
             for year in m.stf
-            if y0 <= year <= stf  # Explicitly sum from y0 to current year
+            if y0 <= year <= stf
         )
 
         # RHS = Sum of required steps for current year

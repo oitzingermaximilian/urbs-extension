@@ -52,7 +52,7 @@ def get_constants(instance):
     decisionvalues_sec = get_entity(instance, "BD_sec")
     # print(decisionvalues_sec)
     pricereduction_sec = get_entity(instance, "pricereduction_sec")
-    #print(pricereduction_sec)
+    # print(pricereduction_sec)
     capacityprimary = get_entity(instance, "capacity_ext_euprimary")
     # print(capacityprimary)
     # Print the values of BD
@@ -326,7 +326,7 @@ def get_constants(instance):
         inst_processes_time,
         secondary_cap_df,
         df_e_pro_in_grouped,
-        pricereduction_sec
+        pricereduction_sec,
     )
 
 

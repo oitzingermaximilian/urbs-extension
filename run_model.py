@@ -5,7 +5,7 @@ import urbs
 from datetime import date
 import pandas as pd
 from collections import defaultdict
-#from urbs_auto_plotting import plot_from_excel
+# from urbs_auto_plotting import plot_from_excel
 
 
 def read_carry_over_from_excel(result_path, scenario_name):
@@ -28,7 +28,15 @@ def read_carry_over_from_excel(result_path, scenario_name):
     pricereduction_sec_sheet = pd.read_excel(filepath, sheet_name="pricereduction_sec")
 
     # Forward fill to clean up NaNs
-    for df in [cap_sheet, stock_sheet, dec_sheet, detailed_cap_sheet,secondary_cap,pricereduction_sec_sheet,scrap_sheet]:
+    for df in [
+        cap_sheet,
+        stock_sheet,
+        dec_sheet,
+        detailed_cap_sheet,
+        secondary_cap,
+        pricereduction_sec_sheet,
+        scrap_sheet,
+    ]:
         df["stf"] = df["stf"].fillna(method="ffill")
         if "location" in df.columns:
             df["location"] = df["location"].fillna(method="ffill")
@@ -76,7 +84,9 @@ def read_carry_over_from_excel(result_path, scenario_name):
         balance_year = balance_grouped[balance_grouped["Stf"] == year]
         e_pro_in_year = e_pro_in_grouped[e_pro_in_grouped["stf"] == year]
         detail_year = detailed_cap_sheet[detailed_cap_sheet["stf"] == year]
-        pricereduction_sec_year = pricereduction_sec_sheet[pricereduction_sec_sheet["stf"] == year]
+        pricereduction_sec_year = pricereduction_sec_sheet[
+            pricereduction_sec_sheet["stf"] == year
+        ]
 
         carryovers[int(year)] = {
             "Installed_Capacity_Q_s": {
@@ -338,7 +348,7 @@ def run_myopic(window_length=5):
         print(dir(prob))
 
 
-def run_rolling_horizon(start_year=2024, end_year=2050, step=1):
+def run_rolling_horizon(start_year=2024, end_year=2050, step=9):
     all_carryovers = defaultdict(dict)
 
     for scenario_name, scenario in scenarios:
@@ -426,10 +436,12 @@ def run_rolling_horizon(start_year=2024, end_year=2050, step=1):
 
             # Once all windows are processed, you can now save all carryovers to Excel
             # Make sure to pass `all_carryovers` to the write function
-        output_filename = f"result_{scenario_name}.xlsx"  # Include scenario name in the file name
+        output_filename = (
+            f"result_{scenario_name}.xlsx"  # Include scenario name in the file name
+        )
         output_file_path = os.path.join(result_dir, output_filename)
         write_carryovers_to_excel(all_carryovers, output_file_path)
-        #plot_from_excel(output_file_path) #ToDo enable when final
+        # plot_from_excel(output_file_path) #ToDo enable when final
 
 
 # Execute selected mode
@@ -438,7 +450,7 @@ if args.mode == "perfect":
     run_perfect_foresight()
 elif args.mode == "rolling":
     print("Running in rolling horizon mode")
-    run_rolling_horizon(start_year=2024, end_year=2050, step=10)
+    run_rolling_horizon(start_year=2024, end_year=2050, step=9)
 
 else:
     print(f"Running in myopic mode (window={args.window} years)")

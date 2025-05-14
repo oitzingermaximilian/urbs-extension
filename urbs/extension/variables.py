@@ -104,3 +104,7 @@ def apply_variables(m):
         m.stf, m.location, m.tech, domain=pyomo.NonNegativeReals
     )
     m.cost_scrap = pyomo.Var(m.stf, m.location, m.tech, domain=pyomo.NonNegativeReals)
+
+    # BESS
+
+    m.demand_bess = pyomo.Var(m.stf, m.location, domain=pyomo.NonNegativeReals)

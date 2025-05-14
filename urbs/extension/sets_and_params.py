@@ -421,3 +421,30 @@ def apply_sets_and_params(m, data_urbsextensionv1):
         initialize=initialize_param("price_reduction_init", default_value=0),
         doc="price_reduction_init",
     )
+
+    m.cap_prim_prior = pyomo.Param(
+        m.location,
+        m.tech,
+        initialize=initialize_param("last_prim_cap", default_value=0),
+        doc="last_prim_cap",
+    )
+    m.cap_sec_prior = pyomo.Param(
+        m.location,
+        m.tech,
+        initialize=initialize_param("last_sec_cap", default_value=0),
+        doc="last_sec_cap",
+    )
+
+    m.factor_bess = pyomo.Param(
+        m.location,
+        m.tech,
+        initialize=initialize_param("factor_bess", default_value=0),
+        doc="factor_bess",
+    )
+
+    m.scrap_total = pyomo.Param(
+        m.location,
+        m.tech,
+        initialize=initialize_param("capacity_scrap_total", default_value=0),
+        doc="capacity_scrap_total",
+    )
