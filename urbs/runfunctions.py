@@ -418,6 +418,9 @@ def run_scenario(
 
     # solve model and read results
     optim = SolverFactory("gurobi")  # cplex, glpk, gurobi, ...
+    optim.options["FeasibilityTol"] = 1e-4  # Toleranz für die Nebenbedingungen
+    optim.options["OptimalityTol"] = 1e-4  # Toleranz bei Zielfunktionsoptimalität
+    optim.options["IntFeasTol"] = 1e-4  # Toleranz für Ganzzahligkeit (nur bei MIP relevant)
     optim = setup_solver(optim, logfile=log_filename)
     result = optim.solve(prob, tee=True)
     # assert str(result.solver.termination_condition) == "optimal"
@@ -680,7 +683,6 @@ def slice_data_for_window(data, window_start, window_end, initial_conditions):
                     ]
                     sliced_df = sliced_df[cols_to_keep]
             # Assign weight = 1 for the last year in the rolling horizon if missing
-            # Assign weight = 1 as a row for the last year in the rolling horizon
             if key == "global_prop":  # Adjust this key if needed
                 co2_limit_mask = (
                     sliced_df.index.get_level_values("support_timeframe").isin(

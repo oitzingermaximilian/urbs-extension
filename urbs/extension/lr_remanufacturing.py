@@ -78,43 +78,26 @@ class BD_limitation_constraint_sec(AbstractConstraint):
 class relation_pnew_to_pprior_constraint_sec(AbstractConstraint):
     def apply_rule(self, m, stf, location, tech):
         """
-        Determines the relationship between the price reductions of the current and
-        previous time steps in a secondary context and returns a Pyomo constraint.
-
-        The function ensures that the price reduction for a given time step is greater
-        than or equal to the price reduction in the prior time step, given specific
-        location and technology.
-
-        Args:
-            m: The model containing relevant Pyomo variables and parameters,
-                including `pricereduction_sec` and `y0`.
-            stf: The time step
-            location: The specific location for evaluating the price reduction.
-            tech: The technology type associated with the price reduction.
-
-        Returns:
-            Either a constraint enforcing the relationship between the current and
-            prior time step's price reductions, or skips the constraint for the first
-            time step.
+        Applies price reduction relationship constraint with debug output for
+        validation.
         """
-        if stf == value(m.y0):
+        if stf == 2024:
+            print(f"Skipping constraint for stf={stf} (global start year)")
             return pyomo.Constraint.Skip
-            # Skip for the first time step
-            #p_r_new = m.pricereduction_sec[stf, location, tech]
-            #p_r_prior = m.pricereduction_sec_init[location, tech]
-            #print("p_r_prior",p_r_prior)
 
-            #return p_r_new >= p_r_prior
+        elif stf == value(m.y0):
+            p_r_new = m.pricereduction_sec[stf, location, tech]
+            p_r_prior = m.pricereduction_sec_init[location, tech]
+            print(f"[Initial] stf={stf} == y0={value(m.y0)}: Using INIT condition")
+            print(f"    pricereduction_sec[{stf}, {location}, {tech}] >= pricereduction_sec_init[{location}, {tech}]")
+            return p_r_new == p_r_prior
 
         else:
-            # Debug: Print the comparison between current and previous pricereduction
-            # print(
-            #    f"Debug: relation_pnew_to_pprior_sec for stf={stf}: pricereduction[{stf}] = {m.pricereduction_sec[stf, location, tech]}, pricereduction[{stf - 1}] = {m.pricereduction_sec[stf - 1, location, tech]}"
-            # )
-            return (
-                m.pricereduction_sec[stf, location, tech]
-                >= m.pricereduction_sec[stf - 1, location, tech]
-            )
+            p_r_new = m.pricereduction_sec[stf, location, tech]
+            p_r_prev = m.pricereduction_sec[stf - 1, location, tech]
+            print(f"[Recursive] stf={stf}: Comparing with stf-1={stf - 1}")
+            print(f"    pricereduction_sec[{stf}, {location}, {tech}] >= pricereduction_sec[{stf - 1}, {location}, {tech}]")
+            return p_r_new >= p_r_prev
 
 
 class q_perstep_constraint_sec(AbstractConstraint):

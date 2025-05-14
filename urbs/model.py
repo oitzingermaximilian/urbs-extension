@@ -401,7 +401,7 @@ def create_model(
 
     apply_combined_lr_constraints(m)
 
-    apply_scrap_constraints(m)
+    #apply_scrap_constraints(m)
 
     apply_balance_constraints(m)
 
