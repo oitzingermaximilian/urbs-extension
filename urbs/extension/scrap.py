@@ -50,10 +50,11 @@ class capacity_scrap_dec_rule(AbstractConstraint):
 class capacity_scrap_rec_rule(AbstractConstraint):
     def apply_rule(self, m, stf, location, tech):
         var = m.capacity_scrap_rec[stf, location, tech]
-        cal = ((m.f_mining[location, tech] / m.f_recycling[location, tech]) * m.capacity_ext_eusecondary[stf, location, tech])
+        cal = (
+            m.f_mining[location, tech] / m.f_recycling[location, tech]
+        ) * m.capacity_ext_eusecondary[stf, location, tech]
 
         return var == cal
-
 
 
 class capacity_scrap_total_rule(AbstractConstraint):
@@ -89,7 +90,7 @@ class cost_scrap_rule(AbstractConstraint):
         )
 
 
-#class scrap_total_decrease_rule(AbstractConstraint):
+# class scrap_total_decrease_rule(AbstractConstraint):
 #    def apply_rule(self, m, stf, location, tech):
 #        if tech == "solarPV":
 #            if stf <= 2030:
@@ -103,7 +104,7 @@ class cost_scrap_rule(AbstractConstraint):
 #            return pyomo.Constraint.Skip
 
 
-#class scrap_recycling_increase_rule(AbstractConstraint):
+# class scrap_recycling_increase_rule(AbstractConstraint):
 #    def apply_rule(self, m, stf, location, tech):
 #        if stf == value(m.y0):
 #            return pyomo.Constraint.Skip

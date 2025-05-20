@@ -303,7 +303,9 @@ def apply_sets_and_params(m, data_urbsextensionv1):
     # Assuming wind is added to m.tech and further locations
     # P_sec initialization (price reduction)
     variation_14_updated = {
-        (n, tech, loc): (value if tech in ["solarPV", "windon", "windoff"] else 0)
+        (n, tech, loc): (
+            value if tech in ["solarPV", "windon", "windoff", "Batteries"] else 0
+        )
         for n, value in {
             0: 0,
             1: 46841.69972,
@@ -317,57 +319,98 @@ def apply_sets_and_params(m, data_urbsextensionv1):
         for loc in m.location
     }
 
-    # Initialize m.P_sec
+    uniform_cost_reduction = {
+        0: 0,
+        1: 46841.69972,
+        2: 88383.54549,
+        3: 125225.1836,
+        4: 157898.4141,
+        5: 186874.8668,
+        6: 212572.8099,
+    }
+
+    # Initialize m.P_sec TODO reenable as soon as problem was found! Propably equation 1 the problem with multi dimensional definition of P_sec
+    # m.P_sec = pyomo.Param(
+    #    m.nsteps_sec, m.tech, m.location, initialize=variation_14_updated
+    # )
+
+    # Initialize WITHOUT stf dimension
     m.P_sec = pyomo.Param(
-        m.nsteps_sec, m.tech, m.location, initialize=variation_14_updated
+        m.location,  # Locations
+        m.tech,  # Technologies
+        m.nsteps_sec,  # Steps
+        initialize=lambda m, loc, tech, n: variation_10[n],
+        default=0,
     )
 
     # param def for Capacity needed to reach next step
     # Initialize the dictionary with values for capacityperstep_sec
-    capacity_init_values = {}
+    # capacity_init_values = {}
 
     # Loop over all nsteps_sec, location, and tech
-    for n in m.nsteps_sec:
-        for loc in m.location:
-            for tech in m.tech:
-                if tech == "solarPV":
-                    # Use the predefined capacity values for solarPV (or any logic you want for tech)
-                    capacity_init_values[(n, loc, tech)] = {
-                        0: 0,
-                        1: 100,
-                        2: 1000,
-                        3: 10000,
-                        4: 100000,
-                        5: 1000000,
-                        6: 10000000,
-                    }.get(n, 0)  # Default to 0 for other steps
-                else:
-                    # For other technologies (like wind), set the default to 0
-                    capacity_init_values[(n, loc, tech)] = {
-                        0: 0,
-                        1: 100,
-                        2: 1000,
-                        3: 10000,
-                        4: 100000,
-                        5: 1000000,
-                        6: 10000000,
-                    }.get(n, 0)  # Default to 0 for other steps
+    # for n in m.nsteps_sec:
+    #    for loc in m.location:
+    #        for tech in m.tech:
+    #            if tech == "solarPV":
+    #                # Use the predefined capacity values for solarPV (or any logic you want for tech)
+    #                capacity_init_values[(n, loc, tech)] = {
+    #                    0: 0,
+    #                    1: 100,
+    #                    2: 1000,
+    #                    3: 10000,
+    #                    4: 100000,
+    #                    5: 1000000,
+    #                    6: 10000000,
+    #                }.get(n, 0)  # Default to 0 for other steps
+    #            else:
+    #               # For other technologies (like wind), set the default to 0
+    #               capacity_init_values[(n, loc, tech)] = {
+    #                   0: 0,
+    #                   1: 100,
+    #                   2: 1000,
+    #                   3: 10000,
+    #                   4: 100000,
+    #                   5: 1000000,
+    #                   6: 10000000,
+    #               }.get(n, 0)  # Default to 0 for other steps
     # print(capacity_init_values)
 
-    # Now initialize the Param with the dictionary
-    m.capacityperstep_sec = pyomo.Param(
-        m.nsteps_sec, m.location, m.tech, initialize=capacity_init_values
-    )
+    # Now initialize the Param with the dictionary TODO reenable if wokrs again
+    # m.capacityperstep_sec = pyomo.Param(
+    #    m.nsteps_sec, m.location, m.tech, initialize=capacity_init_values
+    # )
 
-    # Initialize m.capacityperstep_sec
+    # Define the step values (same for all technologies)
+    uniform_step_values = {
+        0: 0,
+        1: 100,
+        2: 1000,
+        3: 10000,
+        4: 100000,
+        5: 1000000,
+        6: 10000000,
+    }
+
+    # Initialize the dictionary with uniform values for all (n, loc, tech)
+    capacity_init_values = {
+        (loc, tech, n): uniform_step_values.get(n, 0)
+        for loc in m.location
+        for tech in m.tech
+        for n in m.nsteps_sec
+    }
+
+    # Initialize the Pyomo Param
     m.capacityperstep_sec = pyomo.Param(
-        m.nsteps_sec, m.location, m.tech, initialize=capacity_init_values
+        m.location,  # First dimension
+        m.tech,  # Second dimension
+        m.nsteps_sec,  # Third dimension
+        initialize=capacity_init_values,
     )
 
     # param for gamma
     m.gamma_sec = pyomo.Param(initialize=1e10)
 
-    m.secondary_cap_carryover = pyomo.Param(
+    m.total_secondary_cap_inital = pyomo.Param(
         m.location,
         m.tech,
         initialize=initialize_param("Initial_secondary_cap", default_value=0),

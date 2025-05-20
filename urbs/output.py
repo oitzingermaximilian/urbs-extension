@@ -79,15 +79,12 @@ def get_constants(instance):
         ],
     )
     # print("cext", cext)
-    secondary_cap_df = get_entities(instance, ["capacity_ext_eusecondary"])
-    secondary_cap_df.sort_values("stf").groupby(
-        ["location", "tech"], as_index=False
-    ).last()
-    # Compute cumulative sum per (location, tech)
-    secondary_cap_df["cumulative"] = secondary_cap_df.groupby(["location", "tech"])[
-        "capacity_ext_eusecondary"
-    ].cumsum()
-    print(secondary_cap_df)
+
+    secondary_cumulative_capacity_df = get_entities(
+        instance, ["capacity_secondary_cumulative"]
+    )
+    print("Cumulative sum by (location, tech) over time:")
+    print(secondary_cumulative_capacity_df)
 
     bext = get_entity(instance, "balance_ext")
     # print("bext", bext)
@@ -324,9 +321,9 @@ def get_constants(instance):
         scrapdf,
         decomdf,
         inst_processes_time,
-        secondary_cap_df,
         df_e_pro_in_grouped,
         pricereduction_sec,
+        secondary_cumulative_capacity_df,
     )
 
 

@@ -108,3 +108,7 @@ def apply_variables(m):
     # BESS
 
     m.demand_bess = pyomo.Var(m.stf, m.location, domain=pyomo.NonNegativeReals)
+
+    m.capacity_secondary_cumulative = pyomo.Var(
+        m.stf, m.location, m.tech, domain=pyomo.NonNegativeReals
+    )

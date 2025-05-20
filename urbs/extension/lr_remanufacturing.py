@@ -32,14 +32,12 @@ class costsavings_constraint_sec(AbstractConstraint):
             the predefined value in the model.
         """
         # Debug statement to check the components of the sum
+
         pricereduction_value_sec = sum(
-            m.P_sec[n, tech, location] * m.BD_sec[stf, location, tech, n]
+            m.P_sec[location, tech, n] * m.BD_sec[stf, location, tech, n]
             for n in m.nsteps_sec
         )
-        print(
-            f"Calculated pricereduction for {stf}, {location}, {tech}: {pricereduction_value_sec}"
-        )
-
+        # print("pricereduction_sec:", pricereduction_value_sec)
         return m.pricereduction_sec[stf, location, tech] == pricereduction_value_sec
 
 
@@ -69,7 +67,7 @@ class BD_limitation_constraint_sec(AbstractConstraint):
         # Debug statement to print the sum of BD[stf, n]
         bd_sum_value_sec = sum(m.BD_sec[stf, location, tech, n] for n in m.nsteps_sec)
         # print(
-        #    f"BD_limitation_rule for stf={stf}, Location={location}, Tech={tech}: Sum of BD is {bd_sum_value_sec}"
+        # f"BD_limitation_rule for stf={stf}, Location={location}, Tech={tech}: Sum of BD is {bd_sum_value_sec}"
         # )
 
         return bd_sum_value_sec <= 1
@@ -82,25 +80,27 @@ class relation_pnew_to_pprior_constraint_sec(AbstractConstraint):
         validation.
         """
         if stf == 2024:
-            print(f"Skipping constraint for stf={stf} (global start year)")
+            # print(f"Skipping constraint for stf={stf} (global start year)")
             return pyomo.Constraint.Skip
 
         elif stf == value(m.y0):
             p_r_new = m.pricereduction_sec[stf, location, tech]
             p_r_prior = m.pricereduction_sec_init[location, tech]
-            print(f"[Initial] stf={stf} == y0={value(m.y0)}: Using INIT condition")
-            print(
-                f"    pricereduction_sec[{stf}, {location}, {tech}] >= pricereduction_sec_init[{location}, {tech}]"
-            )
+            # print(f"[Initial] stf={stf} == y0={value(m.y0)}: Using INIT condition")
+            # print(f"{p_r_new} >= {p_r_prior}")
+            # print(
+            #    f"    pricereduction_sec[{stf}, {location}, {tech}] >= pricereduction_sec_init[{location}, {tech}]"
+            # )
             return p_r_new >= p_r_prior
 
         else:
             p_r_new = m.pricereduction_sec[stf, location, tech]
             p_r_prev = m.pricereduction_sec[stf - 1, location, tech]
-            print(f"[Recursive] stf={stf}: Comparing with stf-1={stf - 1}")
-            print(
-                f"    pricereduction_sec[{stf}, {location}, {tech}] >= pricereduction_sec[{stf - 1}, {location}, {tech}]"
-            )
+            # print(f"[Recursive] stf={stf}: Comparing with stf-1={stf - 1}")
+            # print(f"{p_r_new} >= {p_r_prev}")
+            # print(
+            #    f"    pricereduction_sec[{stf}, {location}, {tech}] >= pricereduction_sec[{stf - 1}, {location}, {tech}]"
+            # )
             return p_r_new >= p_r_prev
 
 
@@ -113,7 +113,8 @@ class q_perstep_constraint_sec(AbstractConstraint):
         y0 = min(m.stf)  # First model year
 
         # LHS = Carryover (only added once) + sum of extensions from y0 to stf
-        lhs = m.secondary_cap_carryover[location, tech] + sum(
+
+        lhs = m.total_secondary_cap_inital[location, tech] + sum(
             m.capacity_ext_eusecondary[year, location, tech]
             for year in m.stf
             if y0 <= year <= stf
@@ -121,18 +122,18 @@ class q_perstep_constraint_sec(AbstractConstraint):
 
         # RHS = Sum of required steps for current year
         rhs = sum(
-            m.BD_sec[stf, location, tech, n] * m.capacityperstep_sec[n, location, tech]
+            m.BD_sec[stf, location, tech, n] * m.capacityperstep_sec[location, tech, n]
             for n in m.nsteps_sec
         )
 
         # Debug output
-        print(
-            f"Year {stf} ({location}, {tech}):\n"
-            f"  Carryover: {m.secondary_cap_carryover[location, tech]}\n"
-            f"  Extensions ({y0}-{stf}): {[m.capacity_ext_eusecondary[y, location, tech] for y in m.stf if y0 <= y <= stf]}\n"
-            f"  Total LHS: {lhs}\n"
-            f"  RHS: {rhs} (Steps: {[m.capacityperstep_sec[n, location, tech] for n in m.nsteps_sec]})"
-        )
+        # print(
+        #    f"Year {stf} ({location}, {tech}):\n"
+        #    f"  Carryover: {m.total_secondary_cap_inital[location, tech]}\n"
+        #    f"  Extensions ({y0}-{stf}): {[m.capacity_ext_eusecondary[y, location, tech] for y in m.stf if y0 <= y <= stf]}\n"
+        #    f"  Total LHS: {lhs}\n"
+        #    f"  RHS: {rhs} (Steps: {[m.capacityperstep_sec[n, location, tech] for n in m.nsteps_sec]})"
+        # )
 
         return lhs >= rhs
 

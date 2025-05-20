@@ -20,9 +20,9 @@ class net_zero_industrialactbenchmark_rule_a(AbstractConstraint):
         rhs = 0.4 * m.capacity_ext_new[stf, location, tech]
 
         # Print both sides for debugging
-        print(
-            f"Debug: STF = {stf}, Location = {location}, Tech = {tech}, LHS = {lhs}, RHS = {rhs}"
-        )
+        # print(
+        #    f"Debug: STF = {stf}, Location = {location}, Tech = {tech}, LHS = {lhs}, RHS = {rhs}"
+        # )
 
         return lhs >= rhs
 

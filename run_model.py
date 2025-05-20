@@ -5,7 +5,9 @@ import urbs
 from datetime import date
 import pandas as pd
 from collections import defaultdict
+
 # from urbs_auto_plotting import plot_from_excel
+from plot_auto import plot_capacity_decomposition_by_technology
 
 
 def read_carry_over_from_excel(result_path, scenario_name):
@@ -19,7 +21,7 @@ def read_carry_over_from_excel(result_path, scenario_name):
     stock_sheet = pd.read_excel(filepath, sheet_name="extension_only_caps")
     detailed_cap_sheet = pd.read_excel(filepath, sheet_name="extension_only_caps")
     dec_sheet = pd.read_excel(filepath, sheet_name="decom")
-    secondary_cap = pd.read_excel(filepath, sheet_name="secondary_cap_sum")
+    secondary_cap = pd.read_excel(filepath, sheet_name="Cumulative Secondary Caps")
     scrap_sheet = pd.read_excel(filepath, sheet_name="scrap")
     balance_sheet = pd.read_excel(filepath, sheet_name="extension_balance")
     e_pro_in_sheet = pd.read_excel(filepath, sheet_name="e_pro_in")
@@ -102,7 +104,7 @@ def read_carry_over_from_excel(result_path, scenario_name):
                 for _, row in dec_year.iterrows()
             },
             "Total Cap Sec": {
-                (row["location"], row["tech"]): row["cumulative"]
+                (row["location"], row["tech"]): row["capacity_secondary_cumulative"]
                 for _, row in sec_year.iterrows()
             },
             "CO2_emissions": {
@@ -349,9 +351,8 @@ def run_myopic(window_length=5):
 
 
 def run_rolling_horizon(start_year=2024, end_year=2050, step=9):
-    all_carryovers = defaultdict(dict)
-
     for scenario_name, scenario in scenarios:
+        all_carryovers = defaultdict(dict)
         windows = []
         current_start = start_year
 
@@ -441,7 +442,7 @@ def run_rolling_horizon(start_year=2024, end_year=2050, step=9):
         )
         output_file_path = os.path.join(result_dir, output_filename)
         write_carryovers_to_excel(all_carryovers, output_file_path)
-        # plot_from_excel(output_file_path) #ToDo enable when final
+        plot_capacity_decomposition_by_technology(output_file_path)
 
 
 # Execute selected mode

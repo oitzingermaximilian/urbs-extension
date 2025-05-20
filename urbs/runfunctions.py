@@ -10,6 +10,8 @@ from .validation import *
 from .saveload import *
 from pyomo.opt.results import TerminationCondition, SolverStatus  # Correct import
 import gurobipy as gp
+from collections import defaultdict
+import pyomo.environ as pyomo
 
 
 def prepare_result_directory(result_name):
@@ -741,6 +743,10 @@ def slice_data_for_window(data, window_start, window_end, initial_conditions):
     return sliced_data
 
 
+# Global variable to track cumulative secondary capacities
+cumulative_secondary_caps = defaultdict(float)
+
+
 def sliced_dataurbsextensionv1(
     data_urbsextensionv1, window_start, window_end, initial_conditions
 ):
@@ -759,7 +765,12 @@ def sliced_dataurbsextensionv1(
     data_urbsextensionv1["base_params"]["y0"] = window_start
     data_urbsextensionv1["base_params"]["y_end"] = window_end
 
-    tech_to_update = ["solarPV", "windoff", "windon"]  # List of technologies to update
+    tech_to_update = [
+        "solarPV",
+        "windoff",
+        "windon",
+        "Batteries",
+    ]  # List of technologies to update
     print(data_urbsextensionv1["technologies"])
 
     # If initial_conditions is not None, then update the capacities, stockpiles, and decommissions
@@ -857,10 +868,10 @@ def sliced_dataurbsextensionv1(
                     "Initial_decommisions"
                 ] = new_decommission
 
-                new_cap_ciumulative = filtered_cumulative_sec_start.get(tech, 0)
+                new_cap_cumulative = filtered_cumulative_sec_start.get(tech, 0)
                 data_urbsextensionv1["technologies"]["EU27"][tech_key][
                     "Initial_secondary_cap"
-                ] = new_cap_ciumulative
+                ] = new_cap_cumulative
 
                 new_pricereduction = filtered_pricereduction_sec_start.get(tech, 0)
                 data_urbsextensionv1["technologies"]["EU27"][tech_key][
@@ -890,7 +901,7 @@ def sliced_dataurbsextensionv1(
                     f"  Initial_decommisions: {current_decommission} -> {new_decommission}"
                 )
                 print(
-                    f"  Initial_secondary_cap: {current_cumulative_sec} -> {new_cap_ciumulative}"
+                    f"  Initial_secondary_cap: {current_cumulative_sec} -> {new_cap_cumulative}"
                 )
                 print(
                     f"  price_reduction_init: {current_pricereduction_sec} -> {new_pricereduction}"
