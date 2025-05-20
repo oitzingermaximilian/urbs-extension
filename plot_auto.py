@@ -77,7 +77,7 @@ def plot_capacity_decomposition_by_technology(output_file_path):
                 bar.set_hatch(hatch)
 
         ax_rel.set_title(
-            f"Composition of Capacity Additions (40% Share) - {tech}", pad=15
+            f"Composition of Capacity Additions (40% Benchmark) - {tech}", pad=15
         )
         ax_rel.set_xlabel("Year", labelpad=10)
         ax_rel.set_xticks(range(len(years)))
@@ -104,7 +104,7 @@ def plot_capacity_decomposition_by_technology(output_file_path):
             for bar in bar_group:
                 bar.set_hatch(hatch)
 
-        ax_abs.set_title(f"Absolute Capacity Additions - {tech}", pad=15)
+        ax_abs.set_title(f"Absolute Capacity Additions 40% Benchmark - {tech}", pad=15)
         ax_abs.set_ylabel("Capacity (GW)", labelpad=10)
         ax_abs.set_xlabel("Year", labelpad=10)
         ax_abs.set_xticks(range(len(years)))
@@ -134,7 +134,7 @@ def plot_capacity_decomposition_by_technology(output_file_path):
 # Example: Call this after saving Excel
 # write_carryovers_to_excel(..., output_file_path)
 # plot_capacity_decomposition_by_technology(output_file_path)
-def plot_all_scenarios(base_dir):
+def plot_all_scenarios(base_dir): #TODO re-add if needed
     # Find all Excel files in the base_dir and its subfolders
     excel_files = glob.glob(
         os.path.join(base_dir, "**", "result_scenario_*.xlsx"), recursive=True
@@ -165,7 +165,7 @@ def plot_all_scenarios(base_dir):
         plot_capacity_decomposition_by_technology(file)
 
 
-def wait_for_excel_sheets(path, expected_sheets, timeout=60):
+def wait_for_excel_sheets(path, expected_sheets, timeout=60): #TODO re-add if needed
     """Wait until the expected sheets exist in the Excel file."""
     start = time.time()
     while time.time() - start < timeout:
