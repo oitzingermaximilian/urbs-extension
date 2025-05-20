@@ -180,5 +180,5 @@ def wait_for_excel_sheets(path, expected_sheets, timeout=60): #TODO re-add if ne
     raise TimeoutError(f"Expected sheets not found in {path} after {timeout} seconds.")
 
 
-plot_capacity_decomposition_by_technology("result/urbs-20250520T1651/result_scenario_base.xlsx")
+# plot_capacity_decomposition_by_technology("result/urbs-20250520T1651/result_scenario_base.xlsx")
 # plot_all_scenarios("result")
