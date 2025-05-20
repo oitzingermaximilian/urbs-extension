@@ -52,7 +52,7 @@ def plot_capacity_decomposition_by_technology(output_file_path):
 
         # === Styling ===
         colors = ["#FDC5B5", "#F99B7D", "#F76C5E"]  # Soft peach to coral
-        hatches = ["..", "//", "xx"]
+        hatches = ["", "", ""] #hatches = ["..", "//", "xx"]
         labels = ["Remanufacturing", "Stock", "Manufacturing"]
         sheet_order = [
             "capacity_ext_eusecondary",
@@ -180,5 +180,5 @@ def wait_for_excel_sheets(path, expected_sheets, timeout=60): #TODO re-add if ne
     raise TimeoutError(f"Expected sheets not found in {path} after {timeout} seconds.")
 
 
-# plot_capacity_decomposition_by_technology("result/urbs-20250520T1630/result_scenario_base.xlsx")
+plot_capacity_decomposition_by_technology("result/urbs-20250520T1651/result_scenario_base.xlsx")
 # plot_all_scenarios("result")
