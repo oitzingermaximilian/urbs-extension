@@ -105,7 +105,9 @@ def apply_variables(m):
     )
     m.cost_scrap = pyomo.Var(m.stf, m.location, m.tech, domain=pyomo.NonNegativeReals)
 
-    # BESS
+    """
+    These Variables are used to simulate a imaginary BESS demand in order to cover the dynamics of battery energy storage systems as well
+    """
 
     m.demand_bess = pyomo.Var(m.stf, m.location, domain=pyomo.NonNegativeReals)
 

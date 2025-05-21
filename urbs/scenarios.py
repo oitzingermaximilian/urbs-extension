@@ -30,6 +30,14 @@ def scenario_base(data, data_urbsextensionv1):
                 pro.loc[(stf, "EU27", "Wind (onshore)"), "cap-up"] = 0
                 pro.loc[(stf, "EU27", "Wind (offshore)"), "cap-up"] = 0
                 pro.loc[(stf, "EU27", "Biomass Plant"), "cap-up"] = 999999999999
+    if "commodity" in data:
+        co = data["commodity"]
+        for stf in data["global_prop"].index.levels[0].tolist():
+            # Check if the year (stf) is before 2030
+            if stf == 2024:
+                co.loc[(stf, "EU27", "CO2", "Env"), "price"] = 500
+            else:
+                co.loc[(stf, "EU27", "CO2", "Env"), "price"] = 500
 
     return data, data_urbsextensionv1
 

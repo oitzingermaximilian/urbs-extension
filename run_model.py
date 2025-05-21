@@ -7,7 +7,7 @@ import pandas as pd
 from collections import defaultdict
 
 # from urbs_auto_plotting import plot_from_excel
-from plot_auto import plot_capacity_decomposition_by_technology
+import plot_auto
 
 
 def read_carry_over_from_excel(result_path, scenario_name):
@@ -442,7 +442,9 @@ def run_rolling_horizon(start_year=2024, end_year=2050, step=9):
         )
         output_file_path = os.path.join(result_dir, output_filename)
         write_carryovers_to_excel(all_carryovers, output_file_path)
-        plot_capacity_decomposition_by_technology(output_file_path)
+        plot_auto.plot_nzia_benchmark(output_file_path)
+        plot_auto.plot_scrap(output_file_path)
+        plot_auto.plot_installed_capacity(output_file_path)
 
 
 # Execute selected mode
