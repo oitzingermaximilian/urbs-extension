@@ -350,7 +350,7 @@ def run_myopic(window_length=5):
         print(dir(prob))
 
 
-def run_rolling_horizon(start_year=2024, end_year=2050, step=9):
+def run_rolling_horizon(start_year=2024, end_year=2050, step=5):
     for scenario_name, scenario in scenarios:
         all_carryovers = defaultdict(dict)
         windows = []
@@ -453,7 +453,7 @@ if args.mode == "perfect":
     run_perfect_foresight()
 elif args.mode == "rolling":
     print("Running in rolling horizon mode")
-    run_rolling_horizon(start_year=2024, end_year=2050, step=9)
+    run_rolling_horizon(start_year=2024, end_year=2050, step=5)
 
 else:
     print(f"Running in myopic mode (window={args.window} years)")

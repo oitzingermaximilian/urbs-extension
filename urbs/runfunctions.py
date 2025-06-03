@@ -12,7 +12,7 @@ from pyomo.opt.results import TerminationCondition, SolverStatus  # Correct impo
 import gurobipy as gp
 from collections import defaultdict
 import pyomo.environ as pyomo
-
+import pandas as pd
 
 def prepare_result_directory(result_name):
     """create a time stamped directory within the result folder.
@@ -571,7 +571,7 @@ def slice_data_for_window(data, window_start, window_end, initial_conditions):
 
                 # Define the very first model year for lifetime offset
                 first_model_year = 2024  # ← Adjust this if needed
-                elapsed_years = window_start - first_model_year
+                elapsed_years = 5 #TODO change for different rolling window
                 if initial_conditions is not None:
                     # Filter initial_conditions to only include relevant technologies
                     filtered_installed_capacity = {
@@ -765,6 +765,9 @@ def sliced_dataurbsextensionv1(
     data_urbsextensionv1["base_params"]["y0"] = window_start
     data_urbsextensionv1["base_params"]["y_end"] = window_end
 
+    # Calculate time period
+    time_period = window_end - window_start
+
     tech_to_update = [
         "solarPV",
         "windoff",
@@ -776,6 +779,7 @@ def sliced_dataurbsextensionv1(
     # If initial_conditions is not None, then update the capacities, stockpiles, and decommissions
     if initial_conditions is not None:
         # Filter initial_conditions to only include relevant technologies
+
         filtered_installed_capacity = {
             tech: initial_conditions["Installed_Capacity_Q_s"].get(("EU27", tech), 0)
             for tech in tech_to_update
@@ -850,6 +854,11 @@ def sliced_dataurbsextensionv1(
                     tech_key
                 ].get("capacity_scrap_total", "Not Set")
 
+                current_lifetime = data_urbsextensionv1["technologies"]["EU27"][tech_key].get("l", "Not Set")
+                time_period = 5 # TODO change window size if intervall is changed
+                new_lifetime = max(current_lifetime - time_period, 1)  # Ensure ≥1
+                data_urbsextensionv1["technologies"]["EU27"][tech_key]["l"] = new_lifetime
+
                 # Update InitialCapacity
                 new_capacity = filtered_installed_capacity.get(tech, 0)
                 data_urbsextensionv1["technologies"]["EU27"][tech_key][
@@ -913,6 +922,8 @@ def sliced_dataurbsextensionv1(
                     f"  last_sec_cap: {current_capacity_ext_eusecondary} -> {new_last_sec_cap}"
                 )
                 print(f"  scrap_total: {current_scrap_total} -> {new_cap_scrap_total}")
+
+                print(f" lifetimes: {current_lifetime} -> {new_lifetime}")
             else:
                 print(
                     f"Technology {tech_key} not found in data_urbsextensionv1['technologies']['EU27']."
