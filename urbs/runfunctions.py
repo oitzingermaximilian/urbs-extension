@@ -14,6 +14,7 @@ from collections import defaultdict
 import pyomo.environ as pyomo
 import pandas as pd
 
+
 def prepare_result_directory(result_name):
     """create a time stamped directory within the result folder.
 
@@ -552,6 +553,7 @@ def slice_data_for_window(data, window_start, window_end, initial_conditions):
                     "Nuclear Plant",
                     "Wind (offshore)",
                     "Wind (onshore)",
+                    "Gas Plant (CCGT) LNG",
                 ]
 
                 hardcoded_lifetimes = {
@@ -567,11 +569,12 @@ def slice_data_for_window(data, window_start, window_end, initial_conditions):
                     "Nuclear Plant": 60,
                     "Wind (offshore)": 25,
                     "Wind (onshore)": 25,
+                    "Gas Plant (CCGT) LNG": 25,
                 }
 
                 # Define the very first model year for lifetime offset
                 first_model_year = 2024  # ← Adjust this if needed
-                elapsed_years = 5 #TODO change for different rolling window
+                elapsed_years = 5  # TODO change for different rolling window
                 if initial_conditions is not None:
                     # Filter initial_conditions to only include relevant technologies
                     filtered_installed_capacity = {
@@ -854,10 +857,14 @@ def sliced_dataurbsextensionv1(
                     tech_key
                 ].get("capacity_scrap_total", "Not Set")
 
-                current_lifetime = data_urbsextensionv1["technologies"]["EU27"][tech_key].get("l", "Not Set")
-                time_period = 5 # TODO change window size if intervall is changed
+                current_lifetime = data_urbsextensionv1["technologies"]["EU27"][
+                    tech_key
+                ].get("l", "Not Set")
+                time_period = 5  # TODO change window size if intervall is changed
                 new_lifetime = max(current_lifetime - time_period, 1)  # Ensure ≥1
-                data_urbsextensionv1["technologies"]["EU27"][tech_key]["l"] = new_lifetime
+                data_urbsextensionv1["technologies"]["EU27"][tech_key]["l"] = (
+                    new_lifetime
+                )
 
                 # Update InitialCapacity
                 new_capacity = filtered_installed_capacity.get(tech, 0)

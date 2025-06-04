@@ -53,7 +53,7 @@ def plot_nzia_benchmark(output_file_path):
 
         # === Styling ===
         colors = ["#FDC5B5", "#F99B7D", "#F76C5E"]  # Soft peach to coral
-        hatches = ["..", "//", "xx"] #hatches = ["..", "//", "xx"]
+        hatches = ["..", "//", "xx"]  # hatches = ["..", "//", "xx"]
         labels = ["Remanufacturing", "Stock", "Manufacturing"]
         sheet_order = [
             "capacity_ext_eusecondary",
@@ -131,6 +131,7 @@ def plot_nzia_benchmark(output_file_path):
 
         print(f"✔ Plots saved for: {tech} in {output_dir}")
 
+
 def plot_scrap(output_file_path):
     # Extract scenario name from file name
     file_name = os.path.basename(output_file_path)
@@ -164,13 +165,15 @@ def plot_scrap(output_file_path):
 
         # Plot
         fig, ax = plt.subplots(figsize=(6, 4))
-        ax.plot(series.index, series.values, color="seagreen", linewidth=2)  # smooth line
+        ax.plot(
+            series.index, series.values, color="seagreen", linewidth=2
+        )  # smooth line
 
         ax.set_title(f"Scrap volume – {tech}")
         ax.set_xlabel("Year")
         ax.set_ylabel("Scrap [Mt]")
         ax.set_xlim(2023, 2051)
-        #ax.set_xticks(range(2024, 2051, 2))  # Only show actual data years
+        # ax.set_xticks(range(2024, 2051, 2))  # Only show actual data years
         ax.set_ylim(0, max(series.values) * 1.1 if series.values.any() else 1)
         ax.grid(True, linestyle="--", alpha=0.3)
 
@@ -180,6 +183,7 @@ def plot_scrap(output_file_path):
         plt.close(fig)
 
         print(f"✔ Plot saved for: {tech} → {plot_filename}")
+
 
 def plot_installed_capacity(output_file_path):
     file_name = os.path.basename(output_file_path)
@@ -195,7 +199,9 @@ def plot_installed_capacity(output_file_path):
     df = df[df["key_1"] != "Batteries"]
 
     # Pivot data
-    pivot_df = df.pivot_table(index="year", columns="key_1", values="value", aggfunc="sum")
+    pivot_df = df.pivot_table(
+        index="year", columns="key_1", values="value", aggfunc="sum"
+    )
     pivot_df = pivot_df.sort_index()
     pivot_df = pivot_df / 1000  # MW to GW
     years = [2025, 2030, 2035, 2040, 2045, 2050]
@@ -209,7 +215,6 @@ def plot_installed_capacity(output_file_path):
     n_techs = len(techs)
     colors = sns.color_palette("Set3", n_colors=n_techs)
 
-
     # === Absolute plot ===
     fig_abs, ax_abs = plt.subplots(figsize=(11, 6))
     pivot_df.plot(
@@ -219,7 +224,7 @@ def plot_installed_capacity(output_file_path):
         ax=ax_abs,
         edgecolor="black",
         linewidth=0.3,
-        width=0.6
+        width=0.6,
     )
 
     ax_abs.set_title("Absolute Installed Capacity (excl. Batteries)", pad=15)
@@ -234,7 +239,7 @@ def plot_installed_capacity(output_file_path):
     fig_abs.savefig(
         os.path.join(output_dir, "installed_capacity_absolute.png"),
         dpi=300,
-        bbox_inches="tight"
+        bbox_inches="tight",
     )
 
     # === Relative plot ===
@@ -248,7 +253,7 @@ def plot_installed_capacity(output_file_path):
         ax=ax_rel,
         edgecolor="black",
         linewidth=0.3,
-        width=0.6
+        width=0.6,
     )
 
     ax_rel.set_title("Relative Installed Capacity Share (excl. Batteries)", pad=15)
@@ -264,7 +269,7 @@ def plot_installed_capacity(output_file_path):
     fig_rel.savefig(
         os.path.join(output_dir, "installed_capacity_relative.png"),
         dpi=300,
-        bbox_inches="tight"
+        bbox_inches="tight",
     )
 
     plt.close(fig_abs)
@@ -276,7 +281,7 @@ def plot_installed_capacity(output_file_path):
 # Example: Call this after saving Excel
 # write_carryovers_to_excel(..., output_file_path)
 # plot_capacity_decomposition_by_technology(output_file_path)
-def plot_all_scenarios(base_dir): #TODO re-add if needed
+def plot_all_scenarios(base_dir):  # TODO re-add if needed
     # Find all Excel files in the base_dir and its subfolders
     excel_files = glob.glob(
         os.path.join(base_dir, "**", "result_scenario_*.xlsx"), recursive=True
@@ -307,7 +312,7 @@ def plot_all_scenarios(base_dir): #TODO re-add if needed
         plot_capacity_decomposition_by_technology(file)
 
 
-def wait_for_excel_sheets(path, expected_sheets, timeout=60): #TODO re-add if needed
+def wait_for_excel_sheets(path, expected_sheets, timeout=60):  # TODO re-add if needed
     """Wait until the expected sheets exist in the Excel file."""
     start = time.time()
     while time.time() - start < timeout:
