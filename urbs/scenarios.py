@@ -22,22 +22,45 @@ def scenario_base(data, data_urbsextensionv1):
         pro = data["process"]
         for stf in data["global_prop"].index.levels[0].tolist():
             if stf == 2024:
-                pro.loc[(stf, "EU27", "Wind (onshore)"), "inst-cap"] = 0
-                pro.loc[(stf, "EU27", "Wind (offshore)"), "inst-cap"] = 0
                 pro.loc[(stf, "EU27", "Biomass Plant"), "inst-cap"] = 20420
+                pro.loc[(stf, "EU27", "Coal Plant"), "inst-cap"] = 53560
+                pro.loc[(stf, "EU27", "Coal Lignite"), "inst-cap"] = 43590
+                pro.loc[(stf, "EU27", "Gas Plant (CCGT)"), "inst-cap"] = 132230 # ENTSOG: around 30% of Gas supplied in 2023 was LNG, so i split the installed capacity of 188900MW Gas Power Plant in the EU.
+                pro.loc[(stf, "EU27", "Gas Plant (CCGT) LNG"), "inst-cap"] = 56670
+                pro.loc[(stf, "EU27", "Gas Plant (CCGT)"), "min-fraction"] = 0
+                pro.loc[(stf, "EU27", "Gas Plant (CCGT) CCUS"), "min-fraction"] = 0
 
             else:
-                pro.loc[(stf, "EU27", "Wind (onshore)"), "cap-up"] = 0
-                pro.loc[(stf, "EU27", "Wind (offshore)"), "cap-up"] = 0
                 pro.loc[(stf, "EU27", "Biomass Plant"), "cap-up"] = 999999999999
+                pro.loc[(stf, "EU27", "Coal Plant"), "cap-up"] = 53560
+                pro.loc[(stf, "EU27", "Coal Lignite"), "cap-up"] = 43590
+                pro.loc[(stf, "EU27", "Gas Plant (CCGT)"), "cap-up"] = 132230
+                pro.loc[(stf, "EU27", "Gas Plant (CCGT)"), "min-fraction"] = 0
+                pro.loc[(stf, "EU27", "Gas Plant (CCGT) CCUS"), "min-fraction"] = 0
+
     if "commodity" in data:
         co = data["commodity"]
         for stf in data["global_prop"].index.levels[0].tolist():
             # Check if the year (stf) is before 2030
             if stf == 2024:
-                co.loc[(stf, "EU27", "CO2", "Env"), "price"] = 500
+                co.loc[(stf, "EU27", "Piped Gas", "Stock"), "max"] = 319200000
             else:
-                co.loc[(stf, "EU27", "CO2", "Env"), "price"] = 500
+                co.loc[(stf, "EU27", "Piped Gas", "Stock"), "max"] = 319200000
+
+    if "process-commodity" in data:
+        proco = data["process-commodity"]
+        for stf in data["global_prop"].index.levels[0].tolist():
+            # Check if the year (stf) is before 2030
+            if stf == 2024:
+                proco.loc[(stf, "Gas Plant (CCGT)", "Piped Gas", "In"), "ratio-min"] = 0
+                proco.loc[(stf, "Gas Plant (CCGT)", "CO2", "Out"), "ratio-min"] = 0
+                proco.loc[(stf, "Gas Plant (CCGT) CCUS", "Piped Gas", "In"), "ratio-min"] = 0
+                proco.loc[(stf, "Gas Plant (CCGT) CCUS", "CO2", "Out"), "ratio-min"] = 0
+            else:
+                proco.loc[(stf, "Gas Plant (CCGT)", "Piped Gas", "In"), "ratio-min"] = 0
+                proco.loc[(stf, "Gas Plant (CCGT)", "CO2", "Out"), "ratio-min"] = 0
+                proco.loc[(stf, "Gas Plant (CCGT) CCUS", "Piped Gas", "In"), "ratio-min"] = 0
+                proco.loc[(stf, "Gas Plant (CCGT) CCUS", "CO2", "Out"), "ratio-min"] = 0
 
     return data, data_urbsextensionv1
 

@@ -551,8 +551,6 @@ def slice_data_for_window(data, window_start, window_end, initial_conditions):
                     "Hydro (reservoir)",
                     "Hydro (run-of-river)",
                     "Nuclear Plant",
-                    "Wind (offshore)",
-                    "Wind (onshore)",
                     "Gas Plant (CCGT) LNG",
                 ]
 
@@ -567,8 +565,6 @@ def slice_data_for_window(data, window_start, window_end, initial_conditions):
                     "Hydro (reservoir)": 50,
                     "Hydro (run-of-river)": 50,
                     "Nuclear Plant": 60,
-                    "Wind (offshore)": 25,
-                    "Wind (onshore)": 25,
                     "Gas Plant (CCGT) LNG": 25,
                 }
 

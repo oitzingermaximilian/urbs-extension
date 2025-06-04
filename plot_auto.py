@@ -6,6 +6,11 @@ import openpyxl
 import time
 import seaborn as sns
 
+###########-------UNIT CONVERSION-------###########
+def mwh_to_bcm(mwh, energy_content_mj_per_m3=35.8):
+    return mwh * 3.6 * 1000 / (energy_content_mj_per_m3 * 1e9)
+###################################################
+
 
 def plot_nzia_benchmark(output_file_path):
     # Extract scenario name from file name
@@ -185,7 +190,7 @@ def plot_scrap(output_file_path):
         print(f"✔ Plot saved for: {tech} → {plot_filename}")
 
 
-def plot_installed_capacity(output_file_path):
+def plot_balance_created(output_file_path):
     file_name = os.path.basename(output_file_path)
     scenario_name = file_name.replace("result_scenario_", "").replace(".xlsx", "")
     base_dir = os.path.dirname(output_file_path)
@@ -193,7 +198,7 @@ def plot_installed_capacity(output_file_path):
     os.makedirs(output_dir, exist_ok=True)
 
     # Load data
-    df = pd.read_excel(output_file_path, sheet_name="Installed_Capacity_Q_s")
+    df = pd.read_excel(output_file_path, sheet_name="Balance")
 
     # Filter out Batteries
     df = df[df["key_1"] != "Batteries"]
@@ -203,7 +208,7 @@ def plot_installed_capacity(output_file_path):
         index="year", columns="key_1", values="value", aggfunc="sum"
     )
     pivot_df = pivot_df.sort_index()
-    pivot_df = pivot_df / 1000  # MW to GW
+    pivot_df = pivot_df / 1000  # MWh to GWh
     years = [2025, 2030, 2035, 2040, 2045, 2050]
     pivot_df = pivot_df.reindex(years).fillna(0)
 
@@ -227,7 +232,7 @@ def plot_installed_capacity(output_file_path):
         width=0.6,
     )
 
-    ax_abs.set_title("Absolute Installed Capacity (excl. Batteries)", pad=15)
+    ax_abs.set_title("Created Balance (excl. Batteries)", pad=15)
     ax_abs.set_ylabel("Capacity (GW)")
     ax_abs.set_xlabel("Year")
     ax_abs.set_xticks(range(len(years)))
@@ -237,7 +242,7 @@ def plot_installed_capacity(output_file_path):
 
     fig_abs.tight_layout()
     fig_abs.savefig(
-        os.path.join(output_dir, "installed_capacity_absolute.png"),
+        os.path.join(output_dir, "created_Balance_absolute.png"),
         dpi=300,
         bbox_inches="tight",
     )
@@ -256,7 +261,7 @@ def plot_installed_capacity(output_file_path):
         width=0.6,
     )
 
-    ax_rel.set_title("Relative Installed Capacity Share (excl. Batteries)", pad=15)
+    ax_rel.set_title("Relative Installed Balance Share (excl. Batteries)", pad=15)
     ax_rel.set_ylabel("Share of Total Capacity")
     ax_rel.set_xlabel("Year")
     ax_rel.set_xticks(range(len(years)))
@@ -267,7 +272,7 @@ def plot_installed_capacity(output_file_path):
 
     fig_rel.tight_layout()
     fig_rel.savefig(
-        os.path.join(output_dir, "installed_capacity_relative.png"),
+        os.path.join(output_dir, "installed_balance_relative.png"),
         dpi=300,
         bbox_inches="tight",
     )
@@ -275,8 +280,124 @@ def plot_installed_capacity(output_file_path):
     plt.close(fig_abs)
     plt.close(fig_rel)
 
-    print(f"✔ Installed capacity plots saved in {output_dir}")
+    print(f"✔ Installed balance plots saved in {output_dir}")
 
+def lineplot_fuels(output_file_path):
+    # Extract scenario name from file name
+    file_name = os.path.basename(output_file_path)
+    scenario_name = file_name.replace("result_scenario_", "").replace(".xlsx", "")
+
+    # Create output folder next to the Excel file
+    base_dir = os.path.dirname(output_file_path)
+    output_dir = os.path.join(base_dir, f"figures_{scenario_name}")
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Load scrap data
+    sheet_name = "Commodities_Demand"
+    df = pd.read_excel(output_file_path, sheet_name=sheet_name)
+
+    # Define the year range
+    years = list(range(2024, 2051))
+
+    # Get unique technologies
+    df["key_2"] = df["key_2"].astype(str).str.strip().str.upper()
+    fuels = ["PIPED GAS", "LNG"]  # all uppercase now
+
+    for fuel in fuels:
+        # Filter for the fuel
+        fuel_df = df[df["key_2"] == fuel].copy()
+        if fuel_df.empty:
+            print(f"⚠ No data found for {fuel}, skipping.")
+            continue
+
+        # Convert 'value' column to bcm
+        fuel_df["value_bcm"] = mwh_to_bcm(fuel_df["value"])
+
+        # Aggregate by year and reindex to cover all years
+        series = fuel_df.groupby("year")["value_bcm"].sum().reindex(years).fillna(0)
+
+        if series.sum() == 0:
+            print(f"⚠ No data for fuel '{fuel}', skipping.")
+            continue
+
+        # Plot
+        fig, ax = plt.subplots(figsize=(6, 4))
+        ax.plot(series.index, series.values, color="seagreen", linewidth=2)
+        ax.set_title(f"Fuel Demand – {fuel}")
+        ax.set_xlabel("Year")
+        ax.set_ylabel("Demand (bcm)")
+        ax.set_xlim(2023, 2051)
+        ax.set_ylim(0, max(series.values) * 1.1)
+        ax.grid(True, linestyle="--", alpha=0.3)
+
+
+        plt.tight_layout()
+        plot_filename = f"fuel_{fuel.replace(' ', '_').lower()}.png"
+        fig.savefig(os.path.join(output_dir, plot_filename), dpi=300)
+        plt.close(fig)
+
+        print(f"✔ Plot saved for: {fuel} → {plot_filename}")
+
+
+def commodities_demand(output_file_path):
+    file_name = os.path.basename(output_file_path)
+    scenario_name = file_name.replace("result_scenario_", "").replace(".xlsx", "")
+    base_dir = os.path.dirname(output_file_path)
+    output_dir = os.path.join(base_dir, f"figures_{scenario_name}")
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Load data
+    df = pd.read_excel(output_file_path, sheet_name="Commodities_Demand")
+
+    # Filter out
+    exclude = ["Biomass", "Coal", "Lignite", "Hydro", "Nuclear Fuel"]
+    df = df[~df["key_2"].isin(exclude)]
+
+    # Pivot data
+    pivot_df = df.pivot_table(
+        index="year", columns="key_2", values="value", aggfunc="sum"
+    )
+    pivot_df = pivot_df.sort_index()
+    pivot_df = pivot_df
+    years = [2025, 2030, 2035, 2040, 2045, 2050]
+    pivot_df = pivot_df.reindex(years).fillna(0)
+
+    # Sort columns consistently
+    techs = sorted(pivot_df.columns)
+    pivot_df = pivot_df[techs]
+
+    # Generate a beautiful qualitative color palette
+    n_techs = len(techs)
+    colors = sns.color_palette("Set3", n_colors=n_techs)
+
+    # === Absolute plot ===
+    fig_abs, ax_abs = plt.subplots(figsize=(11, 6))
+    pivot_df.plot(
+        kind="bar",
+        stacked=True,
+        color=colors,
+        ax=ax_abs,
+        edgecolor="black",
+        linewidth=0.3,
+        width=0.6,
+    )
+
+    ax_abs.set_title("Fuel Demand", pad=15)
+    ax_abs.set_ylabel("unit")
+    ax_abs.set_xlabel("Year")
+    ax_abs.set_xticks(range(len(years)))
+    ax_abs.set_xticklabels(years)
+    ax_abs.grid(axis="y", alpha=0.3)
+    ax_abs.legend(title="Fuel Type", bbox_to_anchor=(1.02, 1), loc="upper left")
+
+    fig_abs.tight_layout()
+    fig_abs.savefig(
+        os.path.join(output_dir, "commodities_demand.png"),
+        dpi=300,
+        bbox_inches="tight",
+    )
+
+    plt.close(fig_abs)
 
 # Example: Call this after saving Excel
 # write_carryovers_to_excel(..., output_file_path)
@@ -331,3 +452,8 @@ def wait_for_excel_sheets(path, expected_sheets, timeout=60):  # TODO re-add if 
 # plot_all_scenarios("result")
 # plot_scrap("result/urbs-20250520T1651/result_scenario_base.xlsx")
 # plot_installed_capacity("result/urbs-20250520T1651/result_scenario_base.xlsx")
+#plot_commodities_demand("result/urbs-20250604T1424/result_scenario_base.xlsx")
+#commodities_demand("result/urbs-20250604T1424/result_scenario_base.xlsx")
+#lineplot_fuels("result/urbs-20250604T1424/result_scenario_base.xlsx")
+
+plot_balance_created("result/urbs-20250604T1538/result_scenario_base.xlsx")
