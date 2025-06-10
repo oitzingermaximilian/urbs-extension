@@ -427,13 +427,13 @@ def apply_sets_and_params(m, data_urbsextensionv1):
     m.f_mining = pyomo.Param(
         m.location,
         m.tech,
-        initialize=initialize_param("mining", default_value=0),
+        initialize=initialize_param("mining"),
         doc="tons per MW",
     )
     m.f_recycling = pyomo.Param(
         m.location,
         m.tech,
-        initialize=initialize_param("recycling_efficiency", default_value=0),
+        initialize=initialize_param("recycling_efficiency"),
         doc="recycling efficiency in %",
     )
     m.f_scrap_rec = pyomo.Param(

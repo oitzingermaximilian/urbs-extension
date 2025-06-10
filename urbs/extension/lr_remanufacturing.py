@@ -9,99 +9,61 @@ class AbstractConstraint(ABC):
         pass
 
 
+DEBUG = False  # Set True to enable debug logs
+
+
+def debug_print(*args, **kwargs):
+    if DEBUG:
+        print(*args, **kwargs)
+
+
 class costsavings_constraint_sec(AbstractConstraint):
     def apply_rule(self, m, stf, location, tech):
-        """
-        Calculates and verifies the price reduction for a specific staff, location, and
-        technology combination based on the provided model's parameters.
-
-        This function computes the sum of product values from the `P_sec` and `BD_sec`
-        attributes of the model over a range of steps (`nsteps_sec`). The calculated
-        value is then checked against a predefined `pricereduction_sec` value to assert
-        its correctness.
-
-        Args:
-            m: The optimization model containing attributes such as `P_sec`, `BD_sec`,
-                `nsteps_sec`, and `pricereduction_sec`.
-            stf: The time step
-            location: The location identifier associated with the calculation.
-            tech: The technology identifier used in the calculation.
-
-        Returns:
-            A boolean expression asserting if the calculated price reduction matches
-            the predefined value in the model.
-        """
-        # Debug statement to check the components of the sum
-
         pricereduction_value_sec = sum(
             m.P_sec[location, tech, n] * m.BD_sec[stf, location, tech, n]
             for n in m.nsteps_sec
         )
-        # print("pricereduction_sec:", pricereduction_value_sec)
-        return m.pricereduction_sec[stf, location, tech] == pricereduction_value_sec
+        expr = m.pricereduction_sec[stf, location, tech] == pricereduction_value_sec
+        debug_print(
+            f"[costsavings] STF={stf}, loc={location}, tech={tech}  ➞ "
+            f"pricereduction_value_sec={pricereduction_value_sec}\n"
+            f"    expr: {expr}"
+        )
+        return expr
 
 
 class BD_limitation_constraint_sec(AbstractConstraint):
     def apply_rule(self, m, stf, location, tech):
-        """
-        Calculates and enforces the rule for BD limitation by ensuring the sum of BD values
-        across all applicable steps does not exceed a specified upper bound.
-
-        This function aggregates the values of the `BD_sec` parameter across all steps
-        (`m.nsteps_sec`) for a specific staff (`stf`), location (`location`), and technology
-        (`tech`). If the computed sum is less than or equal to 1, the rule is satisfied.
-
-        Args:
-            m: The model containing the decision variables and parameters required for
-                the calculation.
-            stf: The time step
-            location: The location identifier within the model as a dimension in
-                `BD_sec`.
-            tech: The technology identifier within the model as a dimension in
-                `BD_sec`.
-
-        Returns:
-            bool: True if the sum of the BD values is less than or equal to 1, indicating
-                that the limitation rule is satisfied. False otherwise.
-        """
-        # Debug statement to print the sum of BD[stf, n]
         bd_sum_value_sec = sum(m.BD_sec[stf, location, tech, n] for n in m.nsteps_sec)
-        # print(
-        # f"BD_limitation_rule for stf={stf}, Location={location}, Tech={tech}: Sum of BD is {bd_sum_value_sec}"
-        # )
-
-        return bd_sum_value_sec <= 1
+        expr_ok = bd_sum_value_sec <= 1
+        debug_print(
+            f"[BD_limitation] STF={stf}, loc={location}, tech={tech}  ➞ "
+            f"bd_sum_value_sec={bd_sum_value_sec} <= 1? {expr_ok}"
+        )
+        return expr_ok
 
 
 class relation_pnew_to_pprior_constraint_sec(AbstractConstraint):
     def apply_rule(self, m, stf, location, tech):
-        """
-        Applies price reduction relationship constraint with debug output for
-        validation.
-        """
         if stf == 2024:
-            # print(f"Skipping constraint for stf={stf} (global start year)")
+            debug_print(f"[relation_pnew] STF={stf} (2024) ➞ SKIP")
             return pyomo.Constraint.Skip
 
-        elif stf == value(m.y0):
-            p_r_new = m.pricereduction_sec[stf, location, tech]
-            p_r_prior = m.pricereduction_sec_init[location, tech]
-            # print(f"[Initial] stf={stf} == y0={value(m.y0)}: Using INIT condition")
-            # print(f"{p_r_new} >= {p_r_prior}")
-            # print(
-            #    f"    pricereduction_sec[{stf}, {location}, {tech}] >= pricereduction_sec_init[{location}, {tech}]"
-            # )
-            return p_r_new >= p_r_prior
-
+        if stf == value(m.y0):
+            lhs = m.pricereduction_sec[stf, location, tech]
+            rhs = m.pricereduction_sec_init[location, tech]
+            expr = lhs >= rhs
+            debug_print(
+                f"[relation_pnew-init] STF={stf} == y0 ➞ {lhs} >= {rhs} ? {expr}"
+            )
         else:
-            p_r_new = m.pricereduction_sec[stf, location, tech]
-            p_r_prev = m.pricereduction_sec[stf - 1, location, tech]
-            # print(f"[Recursive] stf={stf}: Comparing with stf-1={stf - 1}")
-            # print(f"{p_r_new} >= {p_r_prev}")
-            # print(
-            #    f"    pricereduction_sec[{stf}, {location}, {tech}] >= pricereduction_sec[{stf - 1}, {location}, {tech}]"
-            # )
-            return p_r_new >= p_r_prev
+            lhs = m.pricereduction_sec[stf, location, tech]
+            rhs = m.pricereduction_sec[stf - 1, location, tech]
+            expr = lhs >= rhs
+            debug_print(
+                f"[relation_pnew-recursive] STF={stf} ➞ {lhs} >= {rhs} ? {expr}"
+            )
+        return expr
 
 
 class q_perstep_constraint_sec(AbstractConstraint):
@@ -127,15 +89,14 @@ class q_perstep_constraint_sec(AbstractConstraint):
         )
 
         # Debug output
-        # print(
-        #    f"Year {stf} ({location}, {tech}):\n"
-        #    f"  Carryover: {m.total_secondary_cap_inital[location, tech]}\n"
-        #    f"  Extensions ({y0}-{stf}): {[m.capacity_ext_eusecondary[y, location, tech] for y in m.stf if y0 <= y <= stf]}\n"
-        #    f"  Total LHS: {lhs}\n"
-        #    f"  RHS: {rhs} (Steps: {[m.capacityperstep_sec[n, location, tech] for n in m.nsteps_sec]})"
-        # )
+        expr = lhs >= rhs
+        debug_print(
+            f"[q_perstep] STF={stf}, loc={location}, tech={tech}  ➞\n"
+            f"    LHS={lhs}\n"
+            f"    RHS={rhs}, expr: {expr}"
+        )
 
-        return lhs >= rhs
+        return expr
 
 
 class upper_bound_z_constraint_sec(AbstractConstraint):
@@ -167,8 +128,12 @@ class upper_bound_z_constraint_sec(AbstractConstraint):
         # print(
         #    f"Debug: upper_bound_z_eq_sec for stf={stf}, nsteps_sec={nsteps_sec}: LHS = {lhs_value}, RHS = {rhs_value}"
         # )
-
-        return lhs_value <= rhs_value
+        expr = lhs_value <= rhs_value
+        debug_print(
+            f"[upper_bound_z] STF={stf}, step={nsteps_sec}  ➞ "
+            f"LHS={lhs_value}, RHS={rhs_value}, expr: {expr}"
+        )
+        return expr
 
 
 class upper_bound_z_q1_eq_sec(AbstractConstraint):
@@ -204,8 +169,13 @@ class upper_bound_z_q1_eq_sec(AbstractConstraint):
         # print(
         #    f"Debug: upper_bound_z_q1_eq_sec for stf={stf}, nsteps_sec={nsteps_sec}: LHS = {lhs_value}, RHS = {rhs_value}"
         # )
+        expr = lhs_value <= rhs_value
+        debug_print(
+            f"[upper_bound_z_q1] STF={stf}, step={nsteps_sec}  ➞ "
+            f"LHS={lhs_value}, RHS={rhs_value}, expr: {expr}"
+        )
 
-        return lhs_value <= rhs_value
+        return expr
 
 
 class lower_bound_z_eq_sec(AbstractConstraint):
@@ -246,7 +216,12 @@ class lower_bound_z_eq_sec(AbstractConstraint):
         #    f"Debug: lower_bound_z_eq_sec for stf={stf}, nsteps_sec={nsteps_sec}: LHS = {lhs_value}, RHS = {rhs_value}"
         # )
 
-        return lhs_value >= rhs_value
+        expr = lhs_value >= rhs_value
+        debug_print(
+            f"[lower_bound_z] STF={stf}, step={nsteps_sec}  ➞ "
+            f"LHS={lhs_value}, RHS={rhs_value}, expr: {expr}"
+        )
+        return expr
 
 
 class non_negativity_z_eq_sec(AbstractConstraint):
@@ -287,7 +262,12 @@ class non_negativity_z_eq_sec(AbstractConstraint):
         #    f"Debug: non_negativity_z_eq_sec for stf={stf}, nsteps_sec={nsteps_sec}: LHS = {lhs_value}"
         # )
 
-        return lhs_value >= 0
+        expr = lhs_value >= 0
+        debug_print(
+            f"[non_negativity] STF={stf}, step={nsteps_sec}  ➞ "
+            f"LHS={lhs_value}, expr: {expr}"
+        )
+        return expr
 
 
 def apply_combined_lr_constraints(m):

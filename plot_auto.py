@@ -6,9 +6,12 @@ import openpyxl
 import time
 import seaborn as sns
 
+
 ###########-------UNIT CONVERSION-------###########
 def mwh_to_bcm(mwh, energy_content_mj_per_m3=35.8):
     return mwh * 3.6 * 1000 / (energy_content_mj_per_m3 * 1e9)
+
+
 ###################################################
 
 
@@ -282,6 +285,7 @@ def plot_balance_created(output_file_path):
 
     print(f"✔ Installed balance plots saved in {output_dir}")
 
+
 def lineplot_fuels(output_file_path):
     # Extract scenario name from file name
     file_name = os.path.basename(output_file_path)
@@ -329,7 +333,6 @@ def lineplot_fuels(output_file_path):
         ax.set_xlim(2023, 2051)
         ax.set_ylim(0, max(series.values) * 1.1)
         ax.grid(True, linestyle="--", alpha=0.3)
-
 
         plt.tight_layout()
         plot_filename = f"fuel_{fuel.replace(' ', '_').lower()}.png"
@@ -399,6 +402,7 @@ def commodities_demand(output_file_path):
 
     plt.close(fig_abs)
 
+
 # Example: Call this after saving Excel
 # write_carryovers_to_excel(..., output_file_path)
 # plot_capacity_decomposition_by_technology(output_file_path)
@@ -452,8 +456,8 @@ def wait_for_excel_sheets(path, expected_sheets, timeout=60):  # TODO re-add if 
 # plot_all_scenarios("result")
 # plot_scrap("result/urbs-20250520T1651/result_scenario_base.xlsx")
 # plot_installed_capacity("result/urbs-20250520T1651/result_scenario_base.xlsx")
-#plot_commodities_demand("result/urbs-20250604T1424/result_scenario_base.xlsx")
-#commodities_demand("result/urbs-20250604T1424/result_scenario_base.xlsx")
-#lineplot_fuels("result/urbs-20250604T1424/result_scenario_base.xlsx")
+# plot_commodities_demand("result/urbs-20250604T1424/result_scenario_base.xlsx")
+# commodities_demand("result/urbs-20250604T1424/result_scenario_base.xlsx")
+# lineplot_fuels("result/urbs-20250604T1424/result_scenario_base.xlsx")
 
-plot_balance_created("result/urbs-20250604T1538/result_scenario_base.xlsx")
+# plot_balance_created("result/urbs-20250604T1538/result_scenario_base.xlsx")

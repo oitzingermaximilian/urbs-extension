@@ -413,6 +413,15 @@ def run_scenario(
         indexlist=indexlist,
     )
 
+    def summarize_constraints(model):
+        print("\nConstraint Summary:")
+        for cname in model.component_map(pyomo.Constraint, active=True):
+            constraint = getattr(model, cname)
+            print(
+                f"{cname}: indexed by {list(constraint.index_set())[:3]}... (total: {len(constraint)} items)"
+            )
+
+    summarize_constraints(prob)
     # prob_filename = os.path.join(result_dir, 'model.lp')
     # prob.write(prob_filename, io_options={'symbolic_solver_labels':True})
 
@@ -557,9 +566,9 @@ def slice_data_for_window(data, window_start, window_end, initial_conditions):
                 hardcoded_lifetimes = {
                     "Biomass Plant": 25,
                     "Coal CCUS": 40,
-                    "Coal Lignite": 40,
+                    "Coal Lignite": 5,
                     "Coal Lignite CCUS": 40,
-                    "Coal Plant": 40,
+                    "Coal Plant": 5,
                     "Gas Plant (CCGT)": 25,
                     "Gas Plant (CCGT) CCUS": 25,
                     "Hydro (reservoir)": 50,
@@ -628,7 +637,7 @@ def slice_data_for_window(data, window_start, window_end, initial_conditions):
 
                     for tech, base_lifetime in hardcoded_lifetimes.items():
                         tech_key = f"EU27.{tech}"
-                        adjusted_lifetime = max(base_lifetime - elapsed_years, 1)
+                        adjusted_lifetime = max(base_lifetime - elapsed_years, 0)
 
                         if tech in sliced_df.index.get_level_values("Process"):
                             lifetime_rows = sliced_df.loc[
