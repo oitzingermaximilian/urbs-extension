@@ -28,6 +28,7 @@ def read_carry_over_from_excel(result_path, scenario_name):
     cost_sheet = pd.read_excel(filepath, sheet_name="extension_cost")
     co2_sheet = pd.read_excel(filepath, sheet_name="us_co2")
     pricereduction_sec_sheet = pd.read_excel(filepath, sheet_name="pricereduction_sec")
+    # process_cost_sheet = pd.read_excel(filepath, sheet_name="process_cost")
 
     # Forward fill to clean up NaNs
     for df in [
@@ -68,6 +69,8 @@ def read_carry_over_from_excel(result_path, scenario_name):
     e_pro_in_grouped = e_pro_in_sheet.groupby(
         ["stf", "sit", "pro", "com"], as_index=False
     )["e_pro_in"].sum()
+    # process_cost_grouped = process_cost_sheet.groupby(["stf", "sit", "pro", "cost_type"], as_index=False)[
+    # "process_costs"].sum()
 
     # Group costs by year and process
     cost_grouped = cost_sheet.groupby(["stf", "pro"], as_index=False)[
@@ -89,6 +92,15 @@ def read_carry_over_from_excel(result_path, scenario_name):
         pricereduction_sec_year = pricereduction_sec_sheet[
             pricereduction_sec_sheet["stf"] == year
         ]
+        # process_cost_year = process_cost_grouped[process_cost_grouped["stf"] == year]
+
+        # Create nested dictionary for process costs by cost type
+        # process_cost_dict = {}
+        # for _, row in process_cost_year.iterrows():
+        #    site_pro = (row["sit"], row["pro"],["cost_type"])
+        #    if site_pro not in process_cost_dict:
+        #        process_cost_dict[site_pro] = {}
+        #    process_cost_dict[site_pro] = row["process_costs"]
 
         carryovers[int(year)] = {
             "Installed_Capacity_Q_s": {
@@ -129,6 +141,7 @@ def read_carry_over_from_excel(result_path, scenario_name):
                 (row["sit"], row["pro"], row["com"]): row["e_pro_in"]
                 for _, row in e_pro_in_year.iterrows()
             },
+            # "Process_Costs": process_cost_dict,  # Added the nested process costs dictionary
             # New breakdown fields from detailed_cap
             "capacity_ext_imported": {
                 (row["location"], row["tech"]): row["capacity_ext_imported"]

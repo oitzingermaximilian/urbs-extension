@@ -421,7 +421,7 @@ def run_scenario(
                 f"{cname}: indexed by {list(constraint.index_set())[:3]}... (total: {len(constraint)} items)"
             )
 
-    summarize_constraints(prob)
+    # summarize_constraints(prob)
     # prob_filename = os.path.join(result_dir, 'model.lp')
     # prob.write(prob_filename, io_options={'symbolic_solver_labels':True})
 
@@ -577,9 +577,16 @@ def slice_data_for_window(data, window_start, window_end, initial_conditions):
                     "Gas Plant (CCGT) LNG": 25,
                 }
 
+                hardcoded_cap_init = {
+                    "Biomass Plant": 20420,
+                    "Gas Plant (CCGT)": 132230,
+                    "Gas Plant (CCGT) LNG": 56670,
+                }
+
                 # Define the very first model year for lifetime offset
                 first_model_year = 2024  # ← Adjust this if needed
                 elapsed_years = 5  # TODO change for different rolling window
+
                 if initial_conditions is not None:
                     # Filter initial_conditions to only include relevant technologies
                     filtered_installed_capacity = {
@@ -588,7 +595,50 @@ def slice_data_for_window(data, window_start, window_end, initial_conditions):
                         )
                         for tech in tech_to_update
                     }
-                    print("filtered_installed_capacity", filtered_installed_capacity)
+                    print(
+                        "filtered_installed_capacity (before adjustment):",
+                        filtered_installed_capacity,
+                    )
+
+                    # Adjust capacities based on degradation for the 3 hardcoded techs
+                    for tech in hardcoded_cap_init:
+                        if tech in filtered_installed_capacity:
+                            original_capacity = filtered_installed_capacity[tech]
+
+                            if (
+                                window_start == 2029
+                            ):  # Subtract half of hardcoded capacity
+                                degradation_amount = hardcoded_cap_init[tech] * 0.5
+                                filtered_installed_capacity[tech] = (
+                                    original_capacity - degradation_amount
+                                )
+                                print(
+                                    f"2029 - {tech}: {original_capacity} - {degradation_amount} = {filtered_installed_capacity[tech]}"
+                                )
+
+                            elif (
+                                window_start == 2034
+                            ):  # Subtract all hardcoded capacity (full degradation)
+                                degradation_amount = hardcoded_cap_init[tech]
+                                filtered_installed_capacity[tech] = (
+                                    original_capacity * 0.5
+                                ) - degradation_amount
+                                print(
+                                    f"2034 - {tech}: {original_capacity} - {degradation_amount} = {filtered_installed_capacity[tech]}"
+                                )
+
+                            # Ensure capacity doesn't go negative
+                            if filtered_installed_capacity[tech] < 0:
+                                print(
+                                    f"Warning: {tech} capacity went negative, setting to 0"
+                                )
+                                filtered_installed_capacity[tech] = 0
+
+                    print(
+                        "filtered_installed_capacity (after adjustment):",
+                        filtered_installed_capacity,
+                    )
+
                     for tech, capacity in filtered_installed_capacity.items():
                         tech_key = (
                             f"EU27.{tech}"  # Construct the key for the technology
@@ -616,7 +666,7 @@ def slice_data_for_window(data, window_start, window_end, initial_conditions):
                                 new_row = pd.DataFrame(
                                     {
                                         "inst-cap": [capacity]
-                                    },  # Set the inst-cap value from filtered_installed_capacity
+                                    },  # Set the inst-cap value from adjusted filtered_installed_capacity
                                     index=pd.MultiIndex.from_tuples(
                                         [(window_start, "EU27", tech)],
                                         names=["support_timeframe", "Site", "Process"],
