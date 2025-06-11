@@ -770,7 +770,7 @@ def slice_data_for_window(data, window_start, window_end, initial_conditions):
                     )
                     # Append the new Discount Rate row to the DataFrame
                     sliced_df = pd.concat([sliced_df, new_discount_row])
-                    # Add Discount Rate = 0.03 for window_start year
+                # Add CO2 budget = 4,000,000,000 for window_start year
                 if (
                     "CO2 budget" not in sliced_df.index.get_level_values("Property")
                 ) and (
@@ -787,8 +787,67 @@ def slice_data_for_window(data, window_start, window_end, initial_conditions):
                     )
                     # Append the new CO2 budget row to the DataFrame
                     sliced_df = pd.concat([sliced_df, new_co2_budget_row])
-                    # Add CO2 budget = 4,000,000,000 for window_start year
 
+            elif key == "commodity":
+                # Get scenario-specific prices
+                scenario_prices = read_scenario_prices(window_start)
+
+                # Update LNG prices
+                for year, price in scenario_prices['lng'].items():
+                    if window_start <= year <= window_end:
+                        lng_mask = (
+                            (sliced_df.index.get_level_values("support_timeframe") == year) &
+                            (sliced_df.index.get_level_values("Site") == "EU27") &
+                            (sliced_df.index.get_level_values("Commodity") == "LNG") &
+                            (sliced_df.index.get_level_values("Type") == "Stock")
+                        )
+                        if lng_mask.any():
+                            sliced_df.loc[lng_mask, "price"] = price
+                            print(f"Updated LNG price for {year} to {price}")
+                        else:
+                            # Create new row if it doesn't exist
+                            new_lng_row = pd.DataFrame(
+                                {
+                                    "price": [price],
+                                    "max": [float('inf')],
+                                    "maxperhour": [float('inf')]
+                                },
+                                index=pd.MultiIndex.from_tuples(
+                                    [(year, "EU27", "LNG", "Stock")],
+                                    names=["support_timeframe", "Site", "Commodity", "Type"]
+                                )
+                            )
+                            sliced_df = pd.concat([sliced_df, new_lng_row])
+                            print(f"Added new LNG price entry for {year}: {price}")
+
+                # Update Piped Gas prices
+                for year, price in scenario_prices['piped_gas'].items():
+                    if window_start <= year <= window_end:
+                        gas_mask = (
+                            (sliced_df.index.get_level_values("support_timeframe") == year) &
+                            (sliced_df.index.get_level_values("Site") == "EU27") &
+                            (sliced_df.index.get_level_values("Commodity") == "Piped Gas") &
+                            (sliced_df.index.get_level_values("Type") == "Stock")
+                        )
+                        if gas_mask.any():
+                            sliced_df.loc[gas_mask, "price"] = price
+                            # Keep existing max and maxperhour values
+                            print(f"Updated Piped Gas price for {year} to {price}")
+                        else:
+                            # Create new row if it doesn't exist, with max=319200000 for Piped Gas
+                            new_gas_row = pd.DataFrame(
+                                {
+                                    "price": [price],
+                                    "max": [319200000.0],  # Specific max value for Piped Gas
+                                    "maxperhour": [float('inf')]
+                                },
+                                index=pd.MultiIndex.from_tuples(
+                                    [(year, "EU27", "Piped Gas", "Stock")],
+                                    names=["support_timeframe", "Site", "Commodity", "Type"]
+                                )
+                            )
+                            sliced_df = pd.concat([sliced_df, new_gas_row])
+                            print(f"Added new Piped Gas price entry for {year}: {price}")
             # Debug: Print the resulting DataFrame for verification
             print(f"Sliced DataFrame for '{key}':\n{sliced_df}")
 
@@ -803,6 +862,54 @@ def slice_data_for_window(data, window_start, window_end, initial_conditions):
 
 # Global variable to track cumulative secondary capacities
 cumulative_secondary_caps = defaultdict(float)
+
+
+def read_scenario_prices(window_start):
+    """Read scenario-specific prices for the given window start year."""
+    scenario_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "scenario_specific_data.xlsx")
+    print(f"\nReading scenario prices for window_start: {window_start}")
+    print(f"Looking for file: {scenario_file}")
+
+    try:
+        # Read the sheets
+        solar_prices = pd.read_excel(scenario_file, sheet_name="solar_prices", index_col="Stf")
+        lng_prices = pd.read_excel(scenario_file, sheet_name="lng_prices", index_col="Stf")
+        piped_gas_prices = pd.read_excel(scenario_file, sheet_name="piped_gas_prices", index_col="Stf")
+
+        # Print available columns for debugging
+        print("\nAvailable columns in each sheet:")
+        print("Solar prices columns:", solar_prices.columns.tolist())
+        print("LNG prices columns:", lng_prices.columns.tolist())
+        print("Piped gas prices columns:", piped_gas_prices.columns.tolist())
+
+        # Get the correct column names based on window_start
+        solar_col = f"import_EU27_solarPV_{window_start}"
+        lng_col = f"lng_{window_start}"  # Fixed column name format
+        gas_col = f"piped_gas_{window_start}"  # Fixed column name format
+
+        print(f"\nLooking for columns:")
+        print(f"Solar column: {solar_col}")
+        print(f"LNG column: {lng_col}")
+        print(f"Gas column: {gas_col}")
+
+        result = {
+            'solar': solar_prices[solar_col].to_dict() if solar_col in solar_prices else {},
+            'lng': lng_prices[lng_col].to_dict() if lng_col in lng_prices else {},
+            'piped_gas': piped_gas_prices[gas_col].to_dict() if gas_col in piped_gas_prices else {}
+        }
+
+        print("\nExtracted prices:")
+        print("Solar prices:", result['solar'])
+        print("LNG prices:", result['lng'])
+        print("Piped gas prices:", result['piped_gas'])
+
+        return result
+    except Exception as e:
+        print(f"Error reading scenario prices: {e}")
+        print(f"Error type: {type(e)}")
+        import traceback
+        traceback.print_exc()
+        return {'solar': {}, 'lng': {}, 'piped_gas': {}}
 
 
 def sliced_dataurbsextensionv1(
@@ -991,7 +1098,54 @@ def sliced_dataurbsextensionv1(
                     f"Technology {tech_key} not found in data_urbsextensionv1['technologies']['EU27']."
                 )
 
-    # Filter each dictionary based on the rolling horizon window
+    # Read scenario-specific prices for this window
+    scenario_prices = read_scenario_prices(window_start)
+
+    # Debug print before updating
+    print("\n=== Debug Import Costs Before Update ===")
+    print("Window:", window_start, "to", window_end)
+    print("Current importcost_dict entries for this window:")
+    for key, value in data_urbsextensionv1["importcost_dict"].items():
+        if window_start <= key[0] <= window_end:
+            print(f"  {key}: {value}")
+
+    # Update import costs with scenario-specific prices
+    print("\n=== Updating Import Costs ===")
+    print("Solar prices from scenario:", scenario_prices["solar"])
+    #print("LNG prices from scenario:", scenario_prices['lng'])
+    #print("Piped gas prices from scenario:", scenario_prices['piped_gas'])
+
+    # Update Solar PV prices
+    for year, price in scenario_prices["solar"].items():
+        if window_start <= year <= window_end:
+            key = (year, "EU27", "solarPV")
+            old_price = data_urbsextensionv1["importcost_dict"].get(key, "not set")
+            data_urbsextensionv1["importcost_dict"][key] = price
+            print(f"Updated Solar PV price for {year}: {old_price} -> {price}")
+
+    # Update LNG prices
+    #for year, price in scenario_prices['lng'].items():
+    #    if window_start <= year <= window_end:
+    #        key = (year, 'EU27', 'Gas (LNG)')
+    #        old_price = data_urbsextensionv1["importcost_dict"].get(key, "not set")
+    #        data_urbsextensionv1["importcost_dict"][key] = price
+    #        print(f"Updated LNG price for {year}: {old_price} -> {price}")
+
+    # Update Piped Gas prices
+    #for year, price in scenario_prices['piped_gas'].items():
+    #    if window_start <= year <= window_end:
+    #        key = (year, 'EU27', 'Gas')
+    #        old_price = data_urbsextensionv1["importcost_dict"].get(key, "not set")
+    #        data_urbsextensionv1["importcost_dict"][key] = price
+    #        print(f"Updated Piped Gas price for {year}: {old_price} -> {price}")
+
+    print("\n=== Debug Import Costs After Update ===")
+    print("Updated importcost_dict entries for this window:")
+    for key, value in data_urbsextensionv1["importcost_dict"].items():
+        if window_start <= key[0] <= window_end:
+            print(f"  {key}: {value}")
+
+    # Continue with existing filtering
     data_urbsextensionv1["importcost_dict"] = {
         key: value
         for key, value in data_urbsextensionv1["importcost_dict"].items()
