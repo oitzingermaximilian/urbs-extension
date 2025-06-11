@@ -6,6 +6,17 @@ import openpyxl
 import time
 import seaborn as sns
 
+# Set the font sizes for all plots
+plt.rcParams.update({
+    'font.size': 12,              # General font size
+    'axes.labelsize': 14,         # Axis labels
+    'axes.titlesize': 14,         # Title size reduced
+    'xtick.labelsize': 12,        # X-axis tick labels
+    'ytick.labelsize': 12,        # Y-axis tick labels
+    'legend.fontsize': 12,        # Legend font size
+    'figure.titlesize': 14,       # Figure title size reduced
+    'figure.figsize': (12, 8),    # Default figure size
+})
 
 ###########-------UNIT CONVERSION-------###########
 def mwh_to_bcm(mwh, energy_content_mj_per_m3=35.8):
@@ -90,11 +101,11 @@ def plot_nzia_benchmark(output_file_path):
         )
         ax_rel.set_xlabel("Year", labelpad=10)
         ax_rel.set_xticks(range(len(years)))
-        ax_rel.set_xticklabels(years)
+        ax_rel.set_xticklabels(years, rotation=45, ha='right')
         ax_rel.set_yticks([0, 0.25, 0.5, 0.75, 1.0])
         ax_rel.set_yticklabels(["0%", "10%", "20%", "30%", "40%"])
-        ax_rel.set_ylim(0, 1.2)  # Create headroom
-        ax_rel.legend(labels, frameon=False, bbox_to_anchor=(1, 1))
+        ax_rel.set_ylim(0, 1.2)
+        ax_rel.legend(labels, frameon=True, loc='upper right')  # Legend inside
         ax_rel.grid(axis="y", alpha=0.3)
 
         # ABSOLUTE PLOT
@@ -117,8 +128,8 @@ def plot_nzia_benchmark(output_file_path):
         ax_abs.set_ylabel("Capacity (GW)", labelpad=10)
         ax_abs.set_xlabel("Year", labelpad=10)
         ax_abs.set_xticks(range(len(years)))
-        ax_abs.set_xticklabels(years)
-        ax_abs.legend(labels, frameon=True, bbox_to_anchor=(1, 1))
+        ax_abs.set_xticklabels(years, rotation=45, ha='right')
+        ax_abs.legend(labels, frameon=True, loc='upper right')  # Legend inside
         ax_abs.grid(axis="y", alpha=0.3)
 
         # Save figures
@@ -239,9 +250,9 @@ def plot_balance_created(output_file_path):
     ax_abs.set_ylabel("Capacity (GW)")
     ax_abs.set_xlabel("Year")
     ax_abs.set_xticks(range(len(years)))
-    ax_abs.set_xticklabels(years)
+    ax_abs.set_xticklabels(years, rotation=45, ha='right')
     ax_abs.grid(axis="y", alpha=0.3)
-    ax_abs.legend(title="Technology", bbox_to_anchor=(1.02, 1), loc="upper left")
+    ax_abs.legend(title="Technology", frameon=True, loc='upper right')  # Legend inside
 
     fig_abs.tight_layout()
     fig_abs.savefig(
@@ -268,10 +279,10 @@ def plot_balance_created(output_file_path):
     ax_rel.set_ylabel("Share of Total Capacity")
     ax_rel.set_xlabel("Year")
     ax_rel.set_xticks(range(len(years)))
-    ax_rel.set_xticklabels(years)
+    ax_rel.set_xticklabels(years, rotation=45, ha='right')
     ax_rel.set_yticklabels(["{:.0%}".format(y) for y in ax_rel.get_yticks()])
     ax_rel.grid(axis="y", alpha=0.3)
-    ax_rel.legend(title="Technology", bbox_to_anchor=(1.02, 1), loc="upper left")
+    ax_rel.legend(title="Technology", frameon=True, loc='upper right')  # Legend inside
 
     fig_rel.tight_layout()
     fig_rel.savefig(
@@ -389,9 +400,9 @@ def commodities_demand(output_file_path):
     ax_abs.set_ylabel("unit")
     ax_abs.set_xlabel("Year")
     ax_abs.set_xticks(range(len(years)))
-    ax_abs.set_xticklabels(years)
+    ax_abs.set_xticklabels(years, rotation=45, ha='right')
     ax_abs.grid(axis="y", alpha=0.3)
-    ax_abs.legend(title="Fuel Type", bbox_to_anchor=(1.02, 1), loc="upper left")
+    ax_abs.legend(title="Fuel Type", frameon=True, loc='upper right')  # Legend inside
 
     fig_abs.tight_layout()
     fig_abs.savefig(
@@ -452,7 +463,7 @@ def wait_for_excel_sheets(path, expected_sheets, timeout=60):  # TODO re-add if 
     raise TimeoutError(f"Expected sheets not found in {path} after {timeout} seconds.")
 
 
-# plot_nzia_benchmark("result/urbs-20250520T1651/result_scenario_base.xlsx")
+plot_nzia_benchmark("result/urbs-20250611T1324/result_scenario_base.xlsx")
 # plot_all_scenarios("result")
 # plot_scrap("result/urbs-20250520T1651/result_scenario_base.xlsx")
 # plot_installed_capacity("result/urbs-20250520T1651/result_scenario_base.xlsx")
