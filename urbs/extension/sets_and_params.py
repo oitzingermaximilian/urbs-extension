@@ -152,6 +152,7 @@ def apply_sets_and_params(m, data_urbsextensionv1):
     # Capacity to Balance with loadfactor and h/a
     m.lf_solar = pyomo.Param(
         m.timesteps_ext,
+        m.stf,
         m.location,
         m.tech,
         initialize=data_urbsextensionv1["loadfactors_dict"],
