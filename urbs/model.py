@@ -100,7 +100,7 @@ def create_model(
     # modelled (i.e. excluding init time step for storage) time steps
     m.tm = pyomo.Set(
         within=m.t,
-        initialize=range(0,8761),
+        initialize=range(1,8761),
         ordered=True,
         doc="Set of modelled timesteps",
     )
