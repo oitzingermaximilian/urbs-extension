@@ -1984,10 +1984,21 @@ def scenario_high_high_high(data, data_urbsextensionv1):
         print("✅ Demand updated for EU27 Elec from 2024–2050 using hourly CSV")
 
     if "supim" in data:
-        supim = data["supim"]
-        for t in data["global_prop"].index.levels[0].tolist():
-            if t > 0:
-                supim.loc[t, ("EU27", "Hydro")] = 0.3375
+        # Define number of hours in a non-leap year
+        n_timesteps = 8760
+
+        # Create supim_dict with one entry per hour
+        supim_dict = {(t, "EU27", "Hydro"): 0.3375 for t in range(1, n_timesteps + 1)}
+
+        # Optionally create a DataFrame for consistency with old supim
+        import pandas as pd
+
+        supim_df = pd.DataFrame(index=range(0, n_timesteps + 1))
+        supim_df[("EU27", "Hydro")] = 0.3375
+
+        # Store back
+        data["supim"] = supim_df
+        data["supim_dict"] = supim_dict
                 # print("SUPIM:", supim)
     # Recycling cost updates
     if "recyclingcost_dict" in data_urbsextensionv1:
