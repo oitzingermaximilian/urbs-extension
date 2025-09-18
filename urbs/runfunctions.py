@@ -301,33 +301,35 @@ def run_scenario(
         return stocklvl_dict
 
     def process_loadfactors_sheet(sheet_data):
-        """Processes the load factors data into a dictionary indexed by (timestep, year, location, technology)."""
+        """
+        Processes load factor data into a dictionary indexed by
+        (timestep, year, location, technology).
+
+        Assumes the CSV has:
+          - column 't' for timesteps
+          - other columns in the form 'location_technology' (e.g., 'EU27_solarPV')
+
+        The same hourly profile is replicated for all years 2024–2050.
+        """
         loadfactors_dict = {}
 
-        # Ensure the sheet data has the required columns
-        if "Stf" not in sheet_data.columns or "timestep" not in sheet_data.columns:
-            raise ValueError(
-                "Sheet data must contain 'Stf' (year) and 'Timestep' columns."
-            )
+        # Set 't' as index
+        sheet_data = sheet_data.set_index("t")
 
-        # Set 'Stf' and 'Timestep' as the index
-        sheet_data = sheet_data.set_index(["Stf", "timestep"])
-
-        # Iterate over the columns (technologies and locations)
+        # Iterate over location_tech columns
         for col in sheet_data.columns:
-            # Each column is in the form 'location_technology' (e.g., 'EU27_solarPV')
             parts = col.split("_")
             if len(parts) < 2:
-                continue  # Skip columns that don't match the expected format (i.e., 'location_tech')
+                continue  # skip invalid columns
 
-            location = parts[0]  # Extract location (e.g., "EU27")
-            tech = parts[1]  # Extract technology (e.g., "solarPV")
+            location, tech = parts[0], parts[1]
 
-            # Iterate over the rows (years and timesteps) for each column
-            for (year, timestep), value in sheet_data[col].items():
-                # Store the value in the dictionary as (timestep, year, location, technology) : load factor value
-                loadfactors_dict[(timestep, year, location, tech)] = value
-        # print(loadfactors_dict)
+            # Fill dictionary for all timesteps and years 2024–2050
+            for timestep, value in sheet_data[col].items():
+                for year in range(2024, 2051):
+                    loadfactors_dict[(timestep, year, location, tech)] = value
+            #print(loadfactors_dict)
+
         return loadfactors_dict
 
     def process_gas_block_sheet(sheet_data):

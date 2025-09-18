@@ -370,7 +370,7 @@ def run_rolling_horizon(start_year=2024, end_year=2050, step=5):
             os.makedirs(window_result_dir, exist_ok=True)
 
             indexlist = list(range(window_start, window_end + 1))
-            timesteps = range(0, 13)
+            timesteps = range(0, 8761)
 
             # Load carry-over from previous window if not the first
             if i > 0:

@@ -1,3 +1,4 @@
+import pandas as pd
 def scenario_min_min_min(data, data_urbsextensionv1):
     import pandas as pd
 
@@ -1967,73 +1968,20 @@ def scenario_high_high_high(data, data_urbsextensionv1):
         demand = data["demand"]
         print("✅ Demand Columns", demand.columns)
 
-        yearly_profile = [
-            207658333.3,
-            218766666.7,
-            229875000,
-            240983333.3,
-            252091666.7,
-            263208333.3,
-            255236445.9,
-            262008333.3,
-            268783333.3,
-            275558333.3,
-            282333333.3,
-            289108333.3,
-            295891666.7,
-            302666666.7,
-            309441666.7,
-            316216666.7,
-            294534045.3,
-            304233333.3,
-            313933333.3,
-            323633333.3,
-            333333333.3,
-            343033333.3,
-            352733333.3,
-            362433333.3,
-            372133333.3,
-            381858333.3,
-            338580792.8,
-        ]
+        # === 1. Load the previously generated hourly scaled demand CSV ===
+        df_all_years = pd.read_csv("EU27_hourly_scaled_all_years.csv")  # t, 2024_EU27.Elec, 2025_EU27.Elec, ...
 
-        yearly_profile_with_electrolyser = [
-            207658333.3,
-            218941666.7,
-            230225000,
-            241500000,
-            252775000,
-            264058333.3,
-            289000000,
-            308500000,
-            328000000,
-            347500000,
-            367000000,
-            386500000,
-            406000000,
-            425500000,
-            445000000,
-            464583333.3,
-            397916666.7,
-            423166666.7,
-            448416666.7,
-            473666666.7,
-            498916666.7,
-            524166666.7,
-            549416666.7,
-            574666666.7,
-            599916666.7,
-            610166666.7,
-            537083333.3,
-        ]
+        # === 2. Loop over years and timesteps and fill Pyomo demand DataFrame ===
+        for year in range(2024, 2051):
+            col_name = f"{year}_EU27.Elec"
+            if col_name not in df_all_years.columns:
+                raise ValueError(f"{col_name} not found in df_all_years!")
 
-        years = range(2024, 2051)  # 2024–2050 inclusive
-        for year, per_timestep in zip(years, yearly_profile):
-            # update t = 1..12, leave t=0 untouched
-            demand.loc[(float(year), slice(1, 12)), ("EU27", "Elec")] = per_timestep
-            print("hi")
+            for t, value in zip(df_all_years["t"], df_all_years[col_name]):
+                # demand has MultiIndex (year, timestep) and MultiColumn (location, tech)
+                demand.loc[(float(year), t), ("EU27", "Elec")] = value
 
-        # print("✅ Demand updated for EU27 Elec from 2024–2050")
+        print("✅ Demand updated for EU27 Elec from 2024–2050 using hourly CSV")
 
     if "supim" in data:
         supim = data["supim"]

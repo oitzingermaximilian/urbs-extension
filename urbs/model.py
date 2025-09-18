@@ -74,7 +74,7 @@ def create_model(
     # quantities that start with "e_")
     m.dt = pyomo.Param(
         within=pyomo.Reals,
-        initialize=730,
+        initialize=1,
         doc="Time step duration (in hours), default: 1",
     )
 
@@ -100,7 +100,7 @@ def create_model(
     # modelled (i.e. excluding init time step for storage) time steps
     m.tm = pyomo.Set(
         within=m.t,
-        initialize=range(1, 13),
+        initialize=range(1, 8761),
         ordered=True,
         doc="Set of modelled timesteps",
     )
@@ -395,7 +395,7 @@ def create_model(
 
     apply_gas_block_pricing(m, data_urbsextensionv1)
 
-    apply_scenario_constraints(m)
+    #apply_scenario_constraints(m)
 
     apply_stockpiling_constraints(m)
 
