@@ -303,15 +303,17 @@ def run_scenario(
     def process_loadfactors_sheet(sheet_data):
         """
         Processes load factor data into a dictionary indexed by
-        (timestep, year, location, technology).
+        (timestep, location, technology).
 
         Assumes the CSV has:
           - column 't' for timesteps
           - other columns in the form 'location_technology' (e.g., 'EU27_solarPV')
-
-        The same hourly profile is replicated for all years 2024–2050.
         """
         loadfactors_dict = {}
+
+        # Ensure 't' exists
+        if "t" not in sheet_data.columns:
+            raise ValueError("Sheet must contain 't' column for timesteps")
 
         # Set 't' as index
         sheet_data = sheet_data.set_index("t")
@@ -324,11 +326,9 @@ def run_scenario(
 
             location, tech = parts[0], parts[1]
 
-            # Fill dictionary for all timesteps and years 2024–2050
+            # Fill dictionary for all timesteps
             for timestep, value in sheet_data[col].items():
-                for year in range(2024, 2051):
-                    loadfactors_dict[(timestep, year, location, tech)] = value
-            #print(loadfactors_dict)
+                loadfactors_dict[(timestep, location, tech)] = value
 
         return loadfactors_dict
 

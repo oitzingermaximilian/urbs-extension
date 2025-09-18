@@ -26,7 +26,7 @@ class ConvertCapacity1Rule(AbstractConstraint):
     def apply_rule(self, m, timesteps_ext, stf, location, tech):
         balance_value = (
             m.capacity_ext_imported[stf, location, tech]  # Capacity in MW
-            * m.lf_solar[timesteps_ext, stf, location, tech]  # Load factor
+            * m.lf_solar[timesteps_ext, location, tech]  # Load factor
             #* m.hours[timesteps_ext]  # Duration of the timestep in hours
         )
         # print(
@@ -40,7 +40,7 @@ class ConvertCapacity2Rule(AbstractConstraint):
     def apply_rule(self, m, timesteps_ext, stf, location, tech):
         balance_value = (
             m.capacity_ext_stockout[stf, location, tech]
-            * m.lf_solar[timesteps_ext, stf, location, tech]
+            * m.lf_solar[timesteps_ext,location, tech]
             #* m.hours[timesteps_ext]
         )
         # print(
@@ -57,7 +57,7 @@ class ConvertCapacity3Rule(AbstractConstraint):
     def apply_rule(self, m, timesteps_ext, stf, location, tech):
         balance_value = (
             m.capacity_ext_euprimary[stf, location, tech]
-            * m.lf_solar[timesteps_ext, stf, location, tech]
+            * m.lf_solar[timesteps_ext,location, tech]
             #* m.hours[timesteps_ext]
         )
         # print(
@@ -74,7 +74,7 @@ class ConvertCapacity4Rule(AbstractConstraint):
     def apply_rule(self, m, timesteps_ext, stf, location, tech):
         balance_value = (
             m.capacity_ext_eusecondary[stf, location, tech]
-            * m.lf_solar[timesteps_ext, stf, location, tech]
+            * m.lf_solar[timesteps_ext, location, tech]
             #* m.hours[timesteps_ext]
         )
         # print(
