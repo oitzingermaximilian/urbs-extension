@@ -18,7 +18,7 @@ def apply_sets_and_params(m, data_urbsextensionv1):
         initialize=m.cost_new_list, doc="Set of cost types (hard-coded)"
     )
     # Base sheet read in
-    m.timesteps_ext = pyomo.Set(initialize=range(1, 8761), doc="Timesteps")
+    m.timesteps_ext = pyomo.Set(initialize=range(0, 8761), doc="Timesteps")
     m.y0 = pyomo.Param(initialize=base_params["y0"], mutable=True)  # Initial year
     m.y_end = pyomo.Param(initialize=base_params["y_end"], mutable=True)  # End year
     m.hours = pyomo.Param(
