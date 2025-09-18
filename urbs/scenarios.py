@@ -1990,9 +1990,6 @@ def scenario_high_high_high(data, data_urbsextensionv1):
         # Create supim_dict with one entry per hour
         supim_dict = {(t, "EU27", "Hydro"): 0.3375 for t in range(1, n_timesteps + 1)}
 
-        # Optionally create a DataFrame for consistency with old supim
-        import pandas as pd
-
         supim_df = pd.DataFrame(index=range(0, n_timesteps + 1))
         supim_df[("EU27", "Hydro")] = 0.3375
 
